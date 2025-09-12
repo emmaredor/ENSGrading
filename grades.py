@@ -11,7 +11,7 @@ def read_grades(file, certified=True):
             - the academic year,
             - and the courses with associated grades and credits.
     """
-    print(f"Lecture du bulletin {file} [version certifiée: {certified}]")
+    print(f"Reading grades {file} (certified version: {certified})")
     grades = {} # dict: UE -> (grade, credits) if certified, otherwise, UE -> (grade, gained_credits, credits)
 
     # 1. Read raw data
@@ -23,7 +23,7 @@ def read_grades(file, certified=True):
                 data.extend(text.splitlines())
 
     if len(data) == 0:
-        print("[Erreur] Le bulletin est un PDF-image.")
+        print("[Error] Image based")
 
         return None
     
@@ -85,14 +85,14 @@ def read_grades(file, certified=True):
             print(f"/!\ La lecture du profil de l'étudiant a échoué. Remplissez le fichier grades.json manuellement.")            
 
         n_data = data[5:]
-        for line in n_data:
-            if (line.startswith('UE') or line.endswith("AJ") or line.endswith("ADM")) and not ("Semestre" in line or "L3" in line or "Moyenne" in line or "Séminaire" in line or "Stage" in line or "Master" in line):
+        for line in n_data:                                                                     # UEs non notées.
+            if (line.startswith('UE') or line.endswith("AJ") or line.endswith("ADM")) and not ("Semestre" in line or "L3" in line or "Moyenne" in line or "Séminaire" in line or "Stage" in line or "Master" in line or "pédagogie" in line):
                 line = line[line.index(" ")+1:]
                 # Le bulletin étant parfois mal réalisé, il peut contenir un nombre imaginaire d'ECTS, e.g., 2I.
                 # Le fix ici est simpliste et volontairement simpliste.
                 line = line.replace("I/", "/").replace("UE - ", "").replace("EU - ", "")
                 idx_slash = line.rfind("/")
-                if idx_slash != -1: # Les ECTS ne sont pas affichés en cas de non-validation.
+                if idx_slash != -1: # Les ECTS ne sont pas affichés en cas de non-validation, par exemple.
                     # Le bulletin était parfois (très) mal réalisé, il peut contenir une note imaginaire, e.g. 16F.
                     # On utilise ici quelque chose de plus raffiné, i.e., une regex.
                     grade = float(re.sub(r"[A-Za-z]", "", line[idx_slash+3: line.rfind(" ")].strip().replace(",", ".")))
@@ -104,6 +104,7 @@ def read_grades(file, certified=True):
                     idx_end = line.rfind(" ")
                     idx_beg = line.rfind(" ", 0, idx_end)
                     grade = float(re.sub(r"[A-Za-z]", "", line[idx_beg+1: idx_end].strip().replace(",", ".")))
+                    gained_credits = 0
                     course = line[:idx_beg]
                     credits = 0
                 grades[course] = (grade, gained_credits, credits)
