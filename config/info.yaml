@@ -7,10 +7,10 @@ author:
 
 student:
   gender: Mrs
-  name: Emma
-  firstname: REDOR
-  pronoun: she
-  dob: 26th of September 2001
-  pob: Saint-Nazaire (FRANCE)
+  name: Jean
+  firstname: DUPONT
+  pronoun: he
+  dob: 15th of August 2001
+  pob: Toulouse (FRANCE)
   schoolyear: "2021-2022"
-  yearname: 3rd year of Bachelor's degree in Computer Science
+  yearname: 1st year of Master's degree in Computer Science

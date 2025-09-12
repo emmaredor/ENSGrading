@@ -1,55 +1,55 @@
 {
-    "Projet de recherche 1": [
+    "Research project 1": [
         15.0,
         5,
         5
     ],
-    "Préparation à la recherche 1": [
+    "Research methodology 1": [
         14.0,
         4,
         4
     ],
-    "Systèmes d'exploitation avancés": [
+    "Advanced operating systems": [
         13.0,
         5,
         5
     ],
-    "Anglais 1": [
+    "English 1": [
         16.0,
         2,
         2
     ],
-    "Bio-informatique expérimentale": [
+    "Experimental bioinformatics": [
         11.0,
         4,
         4
     ],
-    "Programmation parallèle": [
+    "Parallel programming": [
         13.4,
         4,
         4
     ],
-    "Sémantique": [
+    "SEM Software foundations": [
         10.02,
         4,
         4
     ],
-    "Projet de recherche 2": [
+    "Research project 2": [
         15.0,
         5,
         5
     ],
-    "Préparation à la recherche 2": [
+    "Research methodology 2": [
         16.5,
         2,
         2
     ],
-    "Anglais 2": [
+    "English 2": [
         9.0,
         1,
         1
     ],
-    "Théorie de l'information ": [
+    "Information theory": [
         6.5,
         4,
         4
@@ -59,7 +59,7 @@
         5,
         5
     ],
-    "Computer graphics E": [
+    "Computer graphics": [
         8.0,
         4,
         4
