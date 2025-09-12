@@ -23,14 +23,15 @@ Voici une proposition de grille d'équivalences de notation pour le département
 
 | Note française (sur 20) | GPA  | Lettre |
 |--------------------------|------|--------|
-| ≥ 14                    | 4.0  | A      |
-| 13 – 13.9               | 3.7  | B+     |
-| 12 – 12.9               | 3.33 | B      |
-| 11 – 11.9               | 3.0  | B-     |
-| 10.5 – 10.9             | 2.7  | C+     |
-| 10.1 – 10.4             | 2.33 | C      |
-| 9 – 10.0                | 2.0  | C-     |
-| 7 – 8.9                 | 1.7  | D      |
+| ≥ 16                    | 4.0  | A+     |
+| 14 - 15.99              | 4.0  | A      |
+| 13 – 13.99              | 3.7  | A-     |
+| 12 – 12.99              | 3.33 | B+     |
+| 11 – 11.99              | 3.0  | B      |
+| 10 – 10.99              | 2.7  | B-     |
+| 9 – 9.99                | 2.33 | C+     |
+| 8 – 8.99                | 2.0  | C      |
+| 7 – 7.99                | 1.7  | C-     |
 | < 7                     | 0.0  | F      |
 | N/A                     | N/A  | N/A    |
 
@@ -40,16 +41,17 @@ L'outil est encore en développement. Il se compose en deux temps :
 
 1. Lecture d'un relevé de notes en PDF-texte (et non image) qui peut être certifié ou non (par la scolarité) : ceci est géré dans le fichier grades.py avec un paramètre dans la fonction read_grades(). Le programme génère dans le dossier config un fichier grades.json qui contient UEs, ECTS et notes. Si une UE n'a pas été validée, au dépend du fichier certifié ou non, il peut ne pas contenir les ECTS. Il est donc laissé à l'utilisateur le soin de vérifier le fichier config/grades.json avec les bons ECTS.
 
-2. Création d'un relevé de notes équivalent en PDF dans le répertoire local : ceci est géré dans le fichier main.py à exécuter.
+Note : il se peut que la lecture du document échoue. Dans ce cas, il faut modifier à la main les fichiers config/grades.json et config/info.yaml
 
-Pour l'utilisation de cet outil, il faut au préalable remplir les informations de l'étudiant / élève dans le fichier config/info.yaml.
+2. Création d'un relevé de notes équivalent en PDF dans le répertoire local : ceci est géré dans le fichier main.py à exécuter.
+Il est possible de spécifier les fichiers que main.py doit utiliser à l'aide des options -g, -i et -o. (voir ``python main.py --help`` pour plus d'information)
 
 ## Accord
 
 Afin de compléter l'outil, nous avons besoin de l'accord et la collaboration du directeur du département informatique de l'ENS Rennes. Et ce sur les points suivants :
 
-1. Validation de la grille d'équivalences de notation proposée ci-dessus.
+- [x] Validation de la grille d'équivalences de notation proposée ci-dessus.
 
-2. Validation de l'outil ou de son intégration dans le système déjà existant.
+- [ ] Validation de l'outil ou de son intégration dans le système déjà existant.
 
-3. Approbation du contenu du relevé de notes équivalent en PDF généré et remplissage des éléments manquants : signature, tampon.
+- [x] Approbation du contenu du relevé de notes équivalent en PDF généré et remplissage des éléments manquants : signature, tampon.
