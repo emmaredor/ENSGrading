@@ -3,5 +3,5 @@
     "ENS": "NB: <i>École normale supérieure de Rennes</i> is one of the most selective French higher education institutions in science and humanities. Students entering ENS are selected from the upper tier of <i>classes préparatoires</i> and universities and ranked in the top 1-5% among French students.",
     "grading": "ENS follows the traditional French grading system based on a numbered scale from 0 to 20, 10 being the minimum passing grade. Grades given at our department correspond to the following:",
     "average": "Typical class average lies between 12 and 14/20 and grades above 16 are seldom awarded.",
-    "outro": "I, <author.gender> <author.name> <author.firstname>, research fellow in <author.field>, <author.title>, hereby certify that the translation of the transcripts obtained by <student.gender> <student.name> <student.firstname> is true to the original."
+    "outro": "I, <author.gender> <author.name> <author.firstname>, full professor in <author.field>, <author.title>, hereby certify that the translation of the transcripts obtained by <student.gender> <student.name> <student.firstname> is true to the original."
 }
