@@ -9,6 +9,8 @@ from reportlab.lib.units import inch
 from reportlab.lib import colors
 from datetime import datetime
 import os
+import sys
+import hashlib
 
 """python main.py --help
 usage: main.py [-h] [-g GRADES] [-i INFO]
@@ -451,6 +453,15 @@ def generate_student_transcript_pdf(yaml_path=None, json_path=None, grades_path=
 
 
 def main():
+    # Fix for macOS
+    if sys.platform == "darwin":
+        if not hasattr(hashlib.md5, "__patched__"):
+            _orig_md5 = hashlib.md5
+            def _patched_md5(*args, **kwargs):
+                kwargs.pop("usedforsecurity", None)  # Ignore unsupported kwarg
+                return _orig_md5(*args, **kwargs)
+            _patched_md5.__patched__ = True
+            hashlib.md5 = _patched_md5
     # Set up command-line argument parsing
     parser = argparse.ArgumentParser(description='Generate student transcript PDF')
     parser.add_argument('-g', '--grades', 
