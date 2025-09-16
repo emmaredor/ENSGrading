@@ -173,6 +173,14 @@ def create_pdf_from_formatted_texts(formatted_texts, student_data, grades_file_p
         fontName='Helvetica'
     )
     
+    note_style = ParagraphStyle(
+        'CustomNote',
+        parent=styles['Normal'],
+        fontSize=8,
+        spaceAfter=6,
+        alignment=4,  # Justify
+        fontName='Helvetica'
+    )
     # Build story
     story = []
 
@@ -287,28 +295,18 @@ def create_pdf_from_formatted_texts(formatted_texts, student_data, grades_file_p
         story.append(Paragraph(formatted_texts['grading'], body_style))
         
         # Create grading scale table with two columns
-        grading_data = [
-            ["• 16-20: Outstanding - A+", "• 10-10.9: Passable - B-"],
-            ["• 14-15.9: Very Good - A", "• 9-9.9: Insufficient - C"],
-            ["• 13-13.9: Good - A-", "• 8-8.9: Poor - C"],
-            ["• 12-12.9: Quite Good - B+", "• 7-7.9: Very Poor - C-"],
-            ["• 11-11.9: Fair - B", "• 0-6.9: Fail - F"]
-        ]
-        
-        # Create the grading table
-        grading_table = Table(grading_data, colWidths=[3*inch, 3*inch])
-        grading_table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-        ]))
-        
-        story.append(grading_table)
-        story.append(Spacer(1, 6))
+        grading_data = """
+        • 16-20:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Outstanding<br/>
+        • 14-15.99:&nbsp;&nbsp;&nbsp;&nbsp;Very Good<br/>
+        • 12-13.99:&nbsp;&nbsp;&nbsp;&nbsp;Good<br/>
+        • 10-11.99:&nbsp;&nbsp;&nbsp;&nbsp;Fair<br/>
+        • < 10:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Fail *
+        """
+        story.append(Paragraph(grading_data, body_style))
+
+        note = "* <i>This course unit is not validated (ECTS credits not awarded). The academic year is validated by compensation, on the basis of the overall average grade.</i>"
+
+        story.append(Paragraph(note, note_style))
     
     # Average information
     if 'average' in formatted_texts:
