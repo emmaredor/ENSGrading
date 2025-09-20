@@ -2,6 +2,7 @@ import json
 import yaml
 import re
 import argparse
+import pandas as pd
 from reportlab.lib.pagesizes import A4, letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image, PageTemplate, Frame
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -11,6 +12,16 @@ from datetime import datetime
 import os
 import sys
 import hashlib
+
+""""
+# New separate files mode
+python main.py --single --student-info config/info_student.yaml --author-info config/info_author.yaml --grades config/grades.json
+
+# Legacy mode (backward compatible)
+python main.py --single -i config/info.yaml --grades config/grades.json
+
+python main.py --batch --students-excel config/students.xlsx --author-yaml config/info_author.yaml -o output_folder
+"""
 
 """python main.py --help
 usage: main.py [-h] [-g GRADES] [-i INFO]
@@ -37,10 +48,191 @@ def load_student_data(yaml_file_path):
         return yaml.safe_load(file)
 
 
+def load_author_data(yaml_file_path):
+    """Load author data from YAML file."""
+    with open(yaml_file_path, 'r', encoding='utf-8') as file:
+        data = yaml.safe_load(file)
+        return {'author': data['author']} if 'author' in data else data
+
+
+def load_student_info(yaml_file_path):
+    """Load student info from YAML file."""
+    with open(yaml_file_path, 'r', encoding='utf-8') as file:
+        data = yaml.safe_load(file)
+        return {'student': data['student']} if 'student' in data else data
+
+
 def load_text_templates(json_file_path):
     """Load text templates from JSON file."""
     with open(json_file_path, 'r', encoding='utf-8') as file:
         return json.load(file)
+
+
+def format_date_from_excel(date_str):
+    """Convert date from Excel format (26/09/2001) to text format (26th of September 2001)."""
+    try:
+        if isinstance(date_str, str):
+            # Handle string format like "26/09/2001"
+            day, month, year = date_str.split('/')
+        else:
+            # Handle pandas datetime
+            day = str(date_str.day)
+            month = str(date_str.month)
+            year = str(date_str.year)
+        
+        # Convert to ordinal
+        day_int = int(day)
+        if day_int in [11, 12, 13]:
+            suffix = 'th'
+        elif day_int % 10 == 1:
+            suffix = 'st'
+        elif day_int % 10 == 2:
+            suffix = 'nd'
+        elif day_int % 10 == 3:
+            suffix = 'rd'
+        else:
+            suffix = 'th'
+        
+        # Month names
+        months = [
+            '', 'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ]
+        
+        month_name = months[int(month)]
+        return f"{day_int}{suffix} of {month_name} {year}"
+    except:
+        return str(date_str)  # Fallback to original if parsing fails
+
+
+def load_students_from_excel(excel_file_path):
+    """Load student data from Excel file."""
+    print(f"Loading Excel file: {excel_file_path}")
+    # Read with header=1 because the actual headers are in row 1, not row 0
+    df = pd.read_excel(excel_file_path, header=1)
+    print(f"Excel file loaded. Shape: {df.shape}")
+    print(f"Columns: {list(df.columns)}")
+    
+    # Try to find the correct column names by looking for variations
+    def find_column(patterns):
+        for pattern in patterns:
+            for col in df.columns:
+                if pattern.lower() in col.lower():
+                    return col
+        return None
+    
+    # Find student info columns
+    name_col = find_column(['Etud_Nom', 'nom', 'lastname', 'name'])
+    firstname_col = find_column(['Etud_Prénom', 'prénom', 'prenom', 'firstname', 'first_name'])
+    birth_col = find_column(['Etud_Naissance', 'naissance', 'birth', 'date_naissance'])
+    city_col = find_column(['Etud_Ville', 'ville', 'city', 'lieu_naissance'])
+    
+    print(f"Found columns:")
+    print(f"  Name: {name_col}")
+    print(f"  Firstname: {firstname_col}")
+    print(f"  Birth: {birth_col}")
+    print(f"  City: {city_col}")
+    
+    students = []
+    
+    for index, row in df.iterrows():
+        print(f"\nProcessing student {index + 1}:")
+        
+        # Extract student info using found columns
+        name_value = row.get(name_col, '') if name_col else ''
+        firstname_value = row.get(firstname_col, '') if firstname_col else ''
+        
+        # Format names: lastname in ALL CAPS, firstname with first letter caps (handle NaN values)
+        formatted_name = ''
+        if name_value and pd.notna(name_value):
+            formatted_name = str(name_value).upper()  # ALL CAPS for lastname
+        
+        formatted_firstname = ''
+        if firstname_value and pd.notna(firstname_value):
+            formatted_firstname = str(firstname_value).title()  # Title case for firstname
+        
+        student_info = {
+            'gender': '',  # Remove 'They' as requested
+            'name': formatted_name,
+            'firstname': formatted_firstname,
+            'pronoun': 'they',
+            'dob': format_date_from_excel(row.get(birth_col, '')) if birth_col else '',
+            'pob': row.get(city_col, '') if city_col else ''
+        }
+        
+        print(f"  Student info: {student_info}")
+        
+        # Extract grades - find all columns that match ObjXXX pattern or similar
+        grades = {}
+        
+        # Look for different course column patterns
+        course_patterns = ['_Libellé', '_libelle', '_libellé', '_name', '_Name', '_LIBELLE']
+        obj_columns = []
+        
+        for pattern in course_patterns:
+            found_cols = [col for col in df.columns if 'Obj' in col and pattern in col]
+            obj_columns.extend(found_cols)
+        
+        # Remove duplicates
+        obj_columns = list(set(obj_columns))
+        print(f"  Found {len(obj_columns)} course columns: {obj_columns}")
+        
+        for obj_col in obj_columns:
+            # Extract the prefix (everything before the pattern)
+            obj_prefix = obj_col
+            for pattern in course_patterns:
+                if pattern in obj_col:
+                    obj_prefix = obj_col.replace(pattern, '')
+                    break
+            
+            course_name = row.get(obj_col, '')
+            
+            if pd.notna(course_name) and course_name.strip():
+                # Try different grade column patterns
+                grade_patterns = ['_Note_Ado/20', '_note_ado/20', '_Note', '_note', '_Grade', '_grade']
+                credits_patterns = ['_Crédits', '_credits', '_Credits', '_CREDITS', '_ECTS', '_ects']
+                
+                grade_col = None
+                credits_col = None
+                
+                # Find grade column
+                for pattern in grade_patterns:
+                    potential_col = f"{obj_prefix}{pattern}"
+                    if potential_col in df.columns:
+                        grade_col = potential_col
+                        break
+                
+                # Find credits column
+                for pattern in credits_patterns:
+                    potential_col = f"{obj_prefix}{pattern}"
+                    if potential_col in df.columns:
+                        credits_col = potential_col
+                        break
+                
+                grade = row.get(grade_col, None) if grade_col else None
+                credits = row.get(credits_col, 0) if credits_col else 0
+                
+                print(f"    Course: {course_name}")
+                print(f"    Grade column: {grade_col}, Value: {grade}")
+                print(f"    Credits column: {credits_col}, Value: {credits}")
+                
+                if pd.notna(grade):
+                    try:
+                        # Format: [grade, credits_obtained, max_credits]
+                        grades[course_name] = [float(grade), int(credits) if pd.notna(credits) else 6, int(credits) if pd.notna(credits) else 6]
+                        print(f"    Added grade: {grades[course_name]}")
+                    except (ValueError, TypeError) as e:
+                        print(f"    Error converting grade/credits: {e}")
+        
+        print(f"  Total grades for student: {len(grades)}")
+        
+        students.append({
+            'student': student_info,
+            'grades': grades
+        })
+    
+    print(f"\nTotal students processed: {len(students)}")
+    return students
 
 
 def format_ordinal_numbers(text):
@@ -537,27 +729,87 @@ def main():
                 return _orig_md5(*args, **kwargs)
             _patched_md5.__patched__ = True
             hashlib.md5 = _patched_md5
+    
     # Set up command-line argument parsing
     parser = argparse.ArgumentParser(description='Generate student transcript PDF')
-    parser.add_argument('-g', '--grades', 
-                       default='config/grades.json',
-                       help='Path to grades JSON file (default: config/grades.json)')
-    parser.add_argument('-i', '--info', 
-                       default='config/info.yaml',
-                       help='Path to student info YAML file (default: config/info.yaml)')
+    
+    # Mode selection
+    mode_group = parser.add_mutually_exclusive_group(required=True)
+    mode_group.add_argument('--single', action='store_true',
+                           help='Generate single PDF from YAML files (OPTION 1)')
+    mode_group.add_argument('--batch', action='store_true',
+                           help='Generate multiple PDFs from Excel file (OPTION 2)')
+    
+    # OPTION 1: Single student mode
+    parser.add_argument('--student-info',
+                       help='Path to student info YAML file (OPTION 1)')
+    parser.add_argument('--author-info',
+                       help='Path to author info YAML file (OPTION 1)')
+    parser.add_argument('-g', '--grades',
+                       help='Path to grades JSON file (OPTION 1)')
+    
+    # OPTION 2: Batch mode  
+    parser.add_argument('--students-excel',
+                       help='Path to students Excel file (OPTION 2)')
+    parser.add_argument('--author-yaml',
+                       help='Path to author YAML file (OPTION 2)')
+    
+    # Common options
     parser.add_argument('-o', '--output',
-                       help='Output PDF filename (default: auto-generated from student name and timestamp)')
+                       help='Output PDF filename (single mode) or output directory (batch mode)')
+    
+    # Legacy support for backward compatibility
+    parser.add_argument('-i', '--info',
+                       help='Path to combined info YAML file (legacy mode)')
     
     args = parser.parse_args()
     
-    # File paths
-    student_yaml_path = args.info
+    # Validate arguments based on mode
+    if args.single:
+        if not args.student_info and not args.info:
+            parser.error("Single mode requires --student-info (or legacy -i/--info)")
+        if not args.author_info and not args.info:
+            parser.error("Single mode requires --author-info (or legacy -i/--info)")
+        if not args.grades:
+            parser.error("Single mode requires --grades")
+        
+        # Handle single student mode
+        return handle_single_mode(args)
+        
+    elif args.batch:
+        if not args.students_excel:
+            parser.error("Batch mode requires --students-excel")
+        if not args.author_yaml:
+            parser.error("Batch mode requires --author-yaml")
+        
+        # Handle batch mode
+        return handle_batch_mode(args)
+
+
+def handle_single_mode(args):
+    """Handle single student PDF generation (OPTION 1)."""
     text_json_path = 'assets/text.json'
     grades_file_path = args.grades
     
     try:
-        # Load data
-        student_data = load_student_data(student_yaml_path)
+        # Load data - support both new separate files and legacy combined file
+        if args.info:
+            # Legacy mode: combined info file
+            student_data = load_student_data(args.info)
+        else:
+            # New mode: separate student and author files
+            student_info = load_student_info(args.student_info)
+            author_info = load_author_data(args.author_info)
+            # Combine the data properly
+            student_data = {
+                'student': {
+                    **student_info['student'],
+                    'schoolyear': author_info.get('author', {}).get('schoolyear', ''),
+                    'yearname': author_info.get('author', {}).get('yearname', '')
+                },
+                'author': author_info.get('author', {})
+            }
+        
         text_templates = load_text_templates(text_json_path)
         
         # Format texts
@@ -580,7 +832,11 @@ def main():
         print(f"PDF created successfully: {created_pdf}")
         print(f"Location: {os.path.abspath(created_pdf)}")
         print(f"Using grades file: {grades_file_path}")
-        print(f"Using info file: {student_yaml_path}")
+        if args.info:
+            print(f"Using info file: {args.info}")
+        else:
+            print(f"Using student file: {args.student_info}")
+            print(f"Using author file: {args.author_info}")
         
         return formatted_texts
         
@@ -592,6 +848,104 @@ def main():
         print(f"Error parsing JSON: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
+
+def handle_batch_mode(args):
+    """Handle batch PDF generation from Excel file (OPTION 2)."""
+    try:
+        print(f"Starting batch mode...")
+        print(f"Excel file: {args.students_excel}")
+        print(f"Author YAML: {args.author_yaml}")
+        
+        # Load author info and text templates
+        author_data = load_author_data(args.author_yaml)
+        print(f"Author data loaded: {author_data}")
+        
+        text_templates = load_text_templates('assets/text.json')
+        print(f"Text templates loaded: {list(text_templates.keys())}")
+        
+        # Load students from Excel
+        students = load_students_from_excel(args.students_excel)
+        print(f"Loaded {len(students)} students from Excel")
+        
+        # Determine output directory
+        output_dir = args.output if args.output else 'output'
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        print(f"Output directory: {output_dir}")
+        
+        generated_pdfs = []
+        
+        for i, student_excel_data in enumerate(students):
+            try:
+                print(f"\n--- Processing student {i+1} ---")
+                print(f"Student data: {student_excel_data['student']}")
+                print(f"Grades count: {len(student_excel_data['grades'])}")
+                
+                # Combine student data with author data and add schoolyear/yearname from author
+                student_data = {
+                    'student': {
+                        **student_excel_data['student'],
+                        'schoolyear': author_data.get('author', {}).get('schoolyear', ''),
+                        'yearname': author_data.get('author', {}).get('yearname', '')
+                    },
+                    'author': author_data.get('author', {})
+                }
+                
+                print(f"Combined student data: {student_data}")
+                
+                # Create grades JSON data for this student
+                grades_data = student_excel_data['grades']
+                print(f"Grades data: {grades_data}")
+                
+                # Skip students with no grades
+                if not grades_data:
+                    print(f"Skipping student {i+1}: No grades found")
+                    continue
+                
+                # Format texts
+                formatted_texts = format_all_texts(student_data, text_templates)
+                
+                # Generate PDF filename
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                pdf_filename = f"{student_data['student']['firstname']}_{student_data['student']['name']}_transcript_{timestamp}_{i+1:03d}.pdf"
+                pdf_path = os.path.join(output_dir, pdf_filename)
+                
+                # Create a temporary grades file for this student
+                temp_grades_file = os.path.join(output_dir, f"temp_grades_{i+1:03d}.json")
+                with open(temp_grades_file, 'w', encoding='utf-8') as f:
+                    json.dump(grades_data, f, indent=2, ensure_ascii=False)
+                
+                print(f"Created temp grades file: {temp_grades_file}")
+                
+                # Generate PDF
+                created_pdf = create_pdf_from_formatted_texts(formatted_texts, student_data, temp_grades_file, pdf_path)
+                
+                # Clean up temporary grades file
+                os.remove(temp_grades_file)
+                
+                generated_pdfs.append(created_pdf)
+                print(f"Generated: {created_pdf}")
+                
+            except Exception as e:
+                print(f"Error generating PDF for student {i+1}: {e}")
+                import traceback
+                traceback.print_exc()
+                continue
+        
+        print(f"\n=== BATCH GENERATION COMPLETE ===")
+        print(f"Generated {len(generated_pdfs)} PDFs in directory: {os.path.abspath(output_dir)}")
+        print(f"Source Excel: {args.students_excel}")
+        print(f"Author info: {args.author_yaml}")
+        
+        return generated_pdfs
+        
+    except FileNotFoundError as e:
+        print(f"Error: File not found - {e}")
+    except Exception as e:
+        print(f"Unexpected error in batch mode: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 if __name__ == "__main__":
