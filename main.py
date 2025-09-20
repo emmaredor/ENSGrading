@@ -186,25 +186,61 @@ def create_pdf_from_formatted_texts(formatted_texts, student_data, grades_file_p
     # Build story
     story = []
 
-    # Add logo in top left corner
+    # Create header with logo on left and title/subtitle on right
     try:
         logo_path = 'assets/logo.png'
         if os.path.exists(logo_path):
-            # Create logo image with appropriate size and left alignment
+            # Create logo image
             logo = Image(logo_path, width=2.2*inch, height=0.75*inch)
-            logo.hAlign = 'LEFT'  # Force left alignment
             
-            story.append(logo)
-            story.append(Spacer(1, 1))  # Add space after logo
+            # Create title and subtitle as separate paragraphs
+            title_text = "Transcript of academic record"
+            title_para = Paragraph(title_text, title_style)
+            
+            subtitle_text = format_ordinal_numbers(student_data['student']['yearname'])
+            subtitle_para = Paragraph(subtitle_text, subtitle_style)
+            
+            # Create a nested table for title and subtitle
+            title_subtitle_data = [[title_para], [subtitle_para]]
+            title_subtitle_table = Table(title_subtitle_data, colWidths=[4*inch])
+            title_subtitle_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]))
+            
+            # Create main header table with logo and title/subtitle
+            header_data = [[logo, title_subtitle_table]]
+            header_table = Table(header_data, colWidths=[2.5*inch, 4*inch])
+            header_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 0), (0, 0), 'LEFT'),     # Logo left aligned
+                ('ALIGN', (1, 0), (1, 0), 'CENTER'),   # Title/subtitle centered
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]))
+            
+            story.append(header_table)
+            story.append(Spacer(1, 12))  # Add space after header
+        else:
+            # Fallback if logo doesn't exist - just add title and subtitle
+            title_text = "Transcript of academic record"
+            story.append(Paragraph(title_text, title_style))
+            subtitle_text = format_ordinal_numbers(student_data['student']['yearname'])
+            story.append(Paragraph(subtitle_text, subtitle_style))
+            
     except Exception as e:
         print(f"Warning: Could not load logo: {e}")
-
-    # Title
-    title_text = "Transcript of academic record"
-    story.append(Paragraph(title_text, title_style))
-
-    subtitle_text = format_ordinal_numbers(student_data['student']['yearname'])
-    story.append(Paragraph(subtitle_text, subtitle_style))
+        # Fallback - just add title and subtitle
+        title_text = "Transcript of academic record"
+        story.append(Paragraph(title_text, title_style))
+        subtitle_text = format_ordinal_numbers(student_data['student']['yearname'])
+        story.append(Paragraph(subtitle_text, subtitle_style))
 
     # Introduction
     if 'intro' in formatted_texts:
@@ -214,7 +250,7 @@ def create_pdf_from_formatted_texts(formatted_texts, student_data, grades_file_p
     try:
         grades_data = load_grades_data(grades_file_path)
         
-        table_data = create_grades_table(grades_data)
+        table_data, passed_all = create_grades_table(grades_data)
         
         # Adjust column widths so the table fits within the document margins (A4 width - left/right margins)
         # Account for grid lines (1pt per column, 4 grid lines for 5 columns = 4pt) and some padding
@@ -239,51 +275,35 @@ def create_pdf_from_formatted_texts(formatted_texts, student_data, grades_file_p
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
             
-            # Data rows styling
-            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            # Data rows styling (excluding summary row)
+            ('BACKGROUND', (0, 1), (-1, -2), colors.white),
+            ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -2), 10),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            
+            # Summary row styling (last row)
+            ('BACKGROUND', (0, -1), (-1, -1), colors.lightgrey),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, -1), (-1, -1), 10),
             
             # Grid styling - outer border thick, inner lines thin
             ('BOX', (0, 0), (-1, -1), 0.8, colors.black),  # Thick outer border
-            ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.black),  # Thin inner lines
+            ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.black),  # Thin inner lines for all rows including summary
+            
+            # Double line before summary row
+            ('LINEABOVE', (0, -1), (-1, -1), 2, colors.black),  # Double line above summary row
             
             # Align course titles to left
-            ('ALIGN', (0, 1), (0, -1), 'LEFT'),
+            ('ALIGN', (0, 1), (0, -2), 'LEFT'),  # Left align course titles (excluding summary)
+            ('ALIGN', (0, -1), (0, -1), 'LEFT'),  # Left align summary row label
         ]))
         
         story.append(grades_table)
-        story.append(Spacer(1, 10))
-
-        # Calculate cumulative GPA
-        total_grade_points = 0
-        total_credits = 0
         
-        # Calculate GPA using the new grades format
-        for course_title, course_info in grades_data.items():
-            grade = course_info[0]
-            if len(course_info) >= 3:
-                credits_obtained = course_info[2]
-            else:
-                credits_obtained = course_info[1]
-            
-            if grade is not None and credits_obtained > 0:
-                # Convert grade to GPA points
-                _, gpa_points = convert_grade_to_letter_and_gpa(grade)
-                if gpa_points != "N/A":
-                    total_grade_points += float(gpa_points) * credits_obtained
-                    total_credits += credits_obtained
-    
-        # Calculate cumulative GPA
-        cumulative_gpa_value = total_grade_points / total_credits if total_credits > 0 else 0
-        
-        cumulative_gpa = f"""
-        <b>Cumulative GPA: {cumulative_gpa_value:.2f}/4.0</b><br/>
-        """
-        story.append(Paragraph(cumulative_gpa, body_style))
-        
-        story.append(Spacer(1, 10))
+        if not passed_all:
+            story.append(Spacer(1, 6))
+            note = "* <i>This course unit is not validated (ECTS credits not awarded). The academic year is validated by compensation, on the basis of the overall average grade.</i>"
+            story.append(Paragraph(note, body_style))
         
     except Exception as e:
         print(f"Warning: Could not load grades data: {e}")
@@ -302,13 +322,10 @@ def create_pdf_from_formatted_texts(formatted_texts, student_data, grades_file_p
         • 14-15.99:&nbsp;&nbsp;&nbsp;&nbsp;Very Good<br/>
         • 12-13.99:&nbsp;&nbsp;&nbsp;&nbsp;Good<br/>
         • 10-11.99:&nbsp;&nbsp;&nbsp;&nbsp;Fair<br/>
-        • < 10:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Fail *
+        • < 10:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Fail
         """
         story.append(Paragraph(grading_data, body_style))
 
-        note = "* <i>This course unit is not validated (ECTS credits not awarded). The academic year is validated by compensation, on the basis of the overall average grade.</i>"
-
-        story.append(Paragraph(note, note_style))
     
     # Average information
     if 'average' in formatted_texts:
@@ -390,21 +407,47 @@ def create_grades_table(grades_data):
     table_data = [
         ['Course Title', 'Credits\nAwarded', 'Grade out\nof 20', 'Letter\nGrade', 'GPA']
     ]
+    passed_all = True
     
-    # Create table rows from new grades format
+    # Variables for calculations
+    total_grade_points = 0
+    actual_credits_earned = 0  # Credits based on individual course performance
+    total_grade_sum = 0
+    total_courses = 0
+    total_max_credits = 0
+    
+    # Calculate totals and process each course
     for course_title, course_info in grades_data.items():
         grade = course_info[0]
-        credits_obtained = course_info[1]
-        if len(course_info) >= 3:
-            max_credits = course_info[2]
-            # Format credits as "obtained/maximum"
-            credits_display = f"{credits_obtained}/{max_credits}"
+        max_credits = course_info[2]
+        
+        # Individual course credit logic (always 0 if grade < 10)
+        if grade < 10:
+            credits_obtained = 0
+            passed_all = False
         else:
-            credits_display = credits_obtained
+            credits_obtained = max_credits
+
+        # Format credits as "obtained/maximum"
+        credits_display = f"{credits_obtained}/{max_credits}"
+        if grade < 10:
+            credits_display = f"{credits_display} *"
         
         # Convert grade
         letter_grade, gpa = convert_grade_to_letter_and_gpa(grade)
         grade_display = str(grade) if grade is not None else "N/A"
+        
+        # Calculate for cumulative GPA using actual earned credits
+        if grade is not None and credits_obtained > 0:
+            if gpa != "N/A":
+                total_grade_points += float(gpa) * credits_obtained
+                actual_credits_earned += credits_obtained
+        
+        # Track totals for average calculation
+        if grade is not None:
+            total_grade_sum += grade
+            total_courses += 1
+            total_max_credits += max_credits
         
         table_data.append([
             course_title,
@@ -414,7 +457,39 @@ def create_grades_table(grades_data):
             gpa
         ])
     
-    return table_data
+    # Calculate average grade out of 20
+    average_grade = total_grade_sum / total_courses if total_courses > 0 else 0
+    
+    # Determine credits to display in TOTALS row
+    if average_grade > 10:
+        # If average > 10, show max possible credits in TOTALS (compensation system)
+        credits_for_totals = total_max_credits
+        # Recalculate GPA using all max credits for compensation
+        total_grade_points_compensation = 0
+        for course_title, course_info in grades_data.items():
+            grade = course_info[0]
+            max_credits = course_info[2]
+            if grade is not None:
+                _, gpa = convert_grade_to_letter_and_gpa(grade)
+                if gpa != "N/A":
+                    total_grade_points_compensation += float(gpa) * max_credits
+        cumulative_gpa_value = total_grade_points_compensation / total_max_credits if total_max_credits > 0 else 0
+    else:
+        # If average ≤ 10, show only actually earned credits
+        credits_for_totals = actual_credits_earned
+        cumulative_gpa_value = total_grade_points / actual_credits_earned if actual_credits_earned > 0 else 0
+    
+    # Add summary row
+    summary_row = [
+        'TOTALS',
+        f'{credits_for_totals}',
+        f'{average_grade:.2f}',
+        f'{convert_grade_to_letter_and_gpa(average_grade)[0]}',
+        f'{cumulative_gpa_value:.2f}'
+    ]
+    table_data.append(summary_row)
+    
+    return table_data, passed_all
 
 
 def generate_student_transcript_pdf(yaml_path=None, json_path=None, grades_path=None, output_path=None):
