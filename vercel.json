@@ -4,6 +4,14 @@
       "runtime": "@vercel/python@4.2.0",
       "maxDuration": 30
     },
+    "api/single_diagnostic.py": {
+      "runtime": "@vercel/python@4.2.0",
+      "maxDuration": 30
+    },
+    "api/single_debug.py": {
+      "runtime": "@vercel/python@4.2.0",
+      "maxDuration": 30
+    },
     "api/single_proper.py": {
       "runtime": "@vercel/python@4.2.0",
       "maxDuration": 30
@@ -12,7 +20,7 @@
   "rewrites": [
     {
       "source": "/api/single",
-      "destination": "/api/single_proper.py"
+      "destination": "/api/single_diagnostic.py"
     }
   ],
   "headers": [
