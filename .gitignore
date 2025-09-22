@@ -71,3 +71,10 @@ Thumbs.db
 
 # Local config
 .env
+config/grades_L3.json
+config/grades_M1.json
+config/students.xlsx
+README_old.md
+README_NEW.md
+main_old.py
+main_new.py

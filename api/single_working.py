@@ -6,7 +6,6 @@ import os
 import sys
 import tempfile
 from datetime import datetime
-import urllib.parse
 
 # Add the parent directory to the Python path to access existing modules
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -15,6 +14,70 @@ from data_loader import DataLoader
 from text_formatter import TextFormatter
 from pdf_generator import TranscriptPDFGenerator
 from grades_processor import GradeValidator
+
+
+class TranscriptGenerator:
+    """Main class for transcript generation operations."""
+    
+    def __init__(self):
+        self.data_loader = DataLoader()
+        self.text_formatter = TextFormatter()
+        self.pdf_generator = TranscriptPDFGenerator()
+        self.grade_validator = GradeValidator()
+
+    def generate_single_transcript_from_data(self, student_info_data, author_info_data, grades_data):
+        """
+        Generate a single student transcript from raw data.
+        
+        Args:
+            student_info_data: Dict containing student information
+            author_info_data: Dict containing author information
+            grades_data: List containing grades information
+            
+        Returns:
+            Tuple of (pdf_content, filename, student_info)
+        """
+        
+        # Combine the data properly using your text formatter
+        student_data = self.text_formatter.combine_student_author_data(
+            student_info_data, author_info_data
+        )
+        
+        # Validate student data
+        if not self.text_formatter.validate_required_fields(student_data):
+            raise ValueError("Missing required fields in student data")
+        
+        # Load text templates
+        text_templates_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets', 'text.json')
+        text_templates = self.data_loader.load_text_templates(text_templates_path)
+        
+        # Validate grades data using your validator
+        is_valid, errors = self.grade_validator.validate_grades_data(grades_data)
+        if not is_valid:
+            raise ValueError(f"Invalid grades data: {'; '.join(errors)}")
+        
+        # Format text templates using your formatter
+        formatted_texts = self.text_formatter.format_all_templates(student_data, text_templates)
+        
+        # Generate output filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{student_data['student']['firstname']}_{student_data['student']['name']}_transcript_{timestamp}.pdf"
+        
+        # Create temporary directory for PDF generation
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Generate output path
+            output_path = os.path.join(temp_dir, filename)
+            
+            # Generate PDF using your PDF generator
+            created_pdf = self.pdf_generator.generate_transcript(
+                formatted_texts, student_data, grades_data, output_path
+            )
+            
+            # Read the generated PDF
+            with open(created_pdf, 'rb') as pdf_file:
+                pdf_content = pdf_file.read()
+                
+            return pdf_content, filename, student_data['student']
 
 
 class handler(BaseHTTPRequestHandler):
@@ -60,51 +123,28 @@ class handler(BaseHTTPRequestHandler):
                 grades_data = json.loads(form_data.get('grades', b'').decode('utf-8'))
                 
                 if not all([student_info_data, author_info_data, grades_data]):
-                    raise ValueError("Missing required data")
+                    raise ValueError("Missing required data: student_info, author_info, or grades")
                     
             except Exception as e:
-                self.send_error_response(400, f'Error parsing files: {str(e)}')
+                self.send_error_response(400, f'Error parsing uploaded files: {str(e)}')
                 return
             
-            # Generate transcript
-            try:
-                # Load and validate data
-                text_formatter = TextFormatter()
-                grade_validator = GradeValidator()
-                
-                # Validate grades
-                validated_grades = grade_validator.validate_grades(grades_data)
-                
-                # Format text data
-                formatted_student = text_formatter.format_student_info(student_info_data)
-                formatted_author = text_formatter.format_author_info(author_info_data)
-                formatted_grades = text_formatter.format_grades_info(validated_grades)
-                
-                # Generate PDF
-                pdf_generator = TranscriptPDFGenerator()
-                pdf_content = pdf_generator.generate_pdf(
-                    formatted_student, 
-                    formatted_author, 
-                    formatted_grades
-                )
-                
-                # Generate filename
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"{formatted_student['firstname']}_{formatted_student['name']}_transcript_{timestamp}.pdf"
-                
-                # Encode PDF as base64
-                pdf_base64 = base64.b64encode(pdf_content).decode('utf-8')
-                
-                # Send success response
-                self.send_success_response({
-                    'success': True,
-                    'pdf_data': pdf_base64,
-                    'filename': filename,
-                    'student_name': f"{formatted_student['firstname']} {formatted_student['name']}"
-                })
-                
-            except Exception as e:
-                self.send_error_response(500, f'PDF generation failed: {str(e)}')
+            # Generate transcript using your existing system
+            generator = TranscriptGenerator()
+            pdf_content, filename, student_info = generator.generate_single_transcript_from_data(
+                student_info_data, author_info_data, grades_data
+            )
+            
+            # Encode PDF as base64
+            pdf_base64 = base64.b64encode(pdf_content).decode('utf-8')
+            
+            # Send success response
+            self.send_success_response({
+                'success': True,
+                'pdf_data': pdf_base64,
+                'filename': filename,
+                'student_name': f"{student_info['firstname']} {student_info['name']}"
+            })
                 
         except Exception as e:
             self.send_error_response(500, f'Server error: {str(e)}')
