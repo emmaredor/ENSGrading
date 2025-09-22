@@ -1,14 +1,20 @@
 {
   "functions": {
-    "api/single.py": {
+    "api/test_cors.py": {
       "runtime": "@vercel/python@4.2.0",
       "maxDuration": 30
     },
-    "api/batch.py": {
+    "api/single_proper.py": {
       "runtime": "@vercel/python@4.2.0",
       "maxDuration": 30
     }
   },
+  "rewrites": [
+    {
+      "source": "/api/single",
+      "destination": "/api/single_proper.py"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
