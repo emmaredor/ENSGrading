@@ -1,10 +1,10 @@
 {
   "functions": {
-    "api/generate-single-proper.py": {
+    "api/single.py": {
       "runtime": "@vercel/python@4.2.0",
       "maxDuration": 30
     },
-    "api/generate-batch-proper.py": {
+    "api/batch.py": {
       "runtime": "@vercel/python@4.2.0",
       "maxDuration": 30
     }

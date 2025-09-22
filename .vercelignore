@@ -22,11 +22,13 @@ main_old.py
 README_old.md
 README.md
 
-# Ignore original and minimal API functions (use proper versions only)
+# Ignore all API functions except the final ones
 api/generate-single.py
 api/generate-batch.py
 api/generate-single-minimal.py
 api/generate-batch-minimal.py
+api/generate-single-proper.py
+api/generate-batch-proper.py
 api/lib/
 api/requirements.txt
 
