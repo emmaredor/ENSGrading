@@ -165,15 +165,15 @@ class GradeTableGenerator:
             # Support both formats: [grade, max_credits] and [grade, credits_obtained, max_credits]
             if len(course_info) == 2:
                 # Format: [grade, max_credits] - calculate credits_obtained based on grade
-                max_credits = course_info[1]
-                credits_obtained = self.calculator.calculate_individual_credits(grade, max_credits)
+                max_credits = course_info[1]  
             elif len(course_info) == 3:
                 # Format: [grade, credits_obtained, max_credits] - use provided credits_obtained
-                credits_obtained = course_info[1]
                 max_credits = course_info[2]
             else:
                 # Invalid format, skip this course
                 continue
+            
+            credits_obtained = self.calculator.calculate_individual_credits(grade, max_credits)
             
             # Check if course was failed
             if self.calculator.should_mark_course_unvalidated(grade):

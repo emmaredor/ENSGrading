@@ -234,20 +234,12 @@ class ExcelStudentLoader:
         try:
             # Read with header=1 because actual headers are in row 1
             df = pd.read_excel(file_path, header=1)
-            print(f"Excel file loaded. Shape: {df.shape}")
-            print(f"Columns: {list(df.columns)}")
             
             # Find student info columns using pattern matching
             name_col = cls.find_column_by_patterns(df, ['Etud_Nom', 'nom', 'lastname', 'name'])
             firstname_col = cls.find_column_by_patterns(df, ['Etud_Prénom', 'prénom', 'prenom', 'firstname', 'first_name'])
             birth_col = cls.find_column_by_patterns(df, ['Etud_Naissance', 'naissance', 'birth', 'date_naissance'])
             city_col = cls.find_column_by_patterns(df, ['Etud_Ville', 'ville', 'city', 'lieu_naissance'])
-            
-            print(f"Found columns:")
-            print(f"  Name: {name_col}")
-            print(f"  Firstname: {firstname_col}")
-            print(f"  Birth: {birth_col}")
-            print(f"  City: {city_col}")
             
             students = []
             
@@ -333,7 +325,6 @@ class ExcelStudentLoader:
         
         # Remove duplicates
         obj_columns = list(set(obj_columns))
-        print(f"  Found {len(obj_columns)} course columns: {obj_columns}")
         
         for obj_col in obj_columns:
             # Extract the prefix (everything before the pattern)
@@ -346,27 +337,44 @@ class ExcelStudentLoader:
             course_name = row.get(obj_col, '')
             
             if pd.notna(course_name) and str(course_name).strip():
-                # Find corresponding grade and credits columns
-                grade_col = cls._find_grade_column(obj_prefix, all_columns)
-                credits_col = cls._find_credits_column(obj_prefix, all_columns)
+                # Check if course type is 'ELP' or if no type column exists
+                type_col = cls._find_type_column(obj_prefix, all_columns)
+                course_type = row.get(type_col, '') if type_col else ''
                 
-                grade = row.get(grade_col, None) if grade_col else None
-                credits = row.get(credits_col, 0) if credits_col else 0
-                
-                print(f"    Course: {course_name}")
-                print(f"    Grade column: {grade_col}, Value: {grade}")
-                print(f"    Credits column: {credits_col}, Value: {credits}")
-                
-                if pd.notna(grade):
-                    try:
-                        # Format: [grade, credits_obtained, max_credits]
-                        credits_int = int(credits) if pd.notna(credits) else 6
-                        grades[str(course_name)] = [float(grade), credits_int, credits_int]
-                        print(f"    Added grade: {grades[str(course_name)]}")
-                    except (ValueError, TypeError) as e:
-                        print(f"    Error converting grade/credits: {e}")
+                # Only include course if type is 'ELP' or if no type column is found
+                if not type_col or str(course_type).strip().upper() == 'ELP':
+                    # Find corresponding grade and credits columns
+                    grade_col = cls._find_grade_column(obj_prefix, all_columns)
+                    credits_col = cls._find_credits_column(obj_prefix, all_columns)
+                    
+                    grade = row.get(grade_col, None) if grade_col else None
+                    credits = row.get(credits_col, 0) if credits_col else 0
+
+                    if pd.notna(grade):
+                        try:
+                            # Format: [grade, credits_obtained, max_credits]
+                            credits_int = int(credits) if pd.notna(credits) else 6
+                            grades[str(course_name)] = [float(grade), credits_int, credits_int]
+                           
+                        except (ValueError, TypeError) as e:
+                            print(f"    Error converting grade/credits: {e}")
+                else:
+                    #print(f"    Course: {course_name} - Skipped (Type: {course_type}, not ELP)")
+                    pass
+            
         
         return grades
+    
+    @staticmethod
+    def _find_type_column(obj_prefix: str, all_columns: List[str]) -> Optional[str]:
+        """Find the type column for a given course prefix."""
+        type_patterns = ['_Type', '_type', '_TYPE']
+        
+        for pattern in type_patterns:
+            potential_col = f"{obj_prefix}{pattern}"
+            if potential_col in all_columns:
+                return potential_col
+        return None
     
     @staticmethod
     def _find_grade_column(obj_prefix: str, all_columns: List[str]) -> Optional[str]:
