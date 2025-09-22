@@ -2,12 +2,16 @@
   "functions": {
     "api/*.py": {
       "runtime": "@vercel/python@4.2.0",
-      "maxDuration": 30
+      "maxDuration": 30,
+      "excludeFiles": "**/*.dll"
     }
   },
   "build": {
     "env": {
-      "PYTHONPATH": "."
+      "PYTHONPATH": ".",
+      "PIP_NO_DEPS": "false",
+      "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+      "PIP_NO_CACHE_DIR": "1"
     }
   },
   "rewrites": [
@@ -16,8 +20,8 @@
       "destination": "/api/single_working.py"
     },
     {
-      "source": "/api/debug",
-      "destination": "/api/debug_imports.py"
+      "source": "/api/test",
+      "destination": "/api/minimal_test.py"
     }
   ],
   "headers": [
