@@ -1,8 +1,10 @@
 # Dependencies for Railway deployment
 PyYAML==6.0.1
 reportlab==4.0.4
-# Using newer pandas version with better pre-built wheel support
+# Using pandas version with good wheel support for faster builds
 pandas==2.1.4
 openpyxl==3.1.2
-# Additional dependencies that may be needed
-numpy>=1.24.0
+# Pinned numpy version for stability
+numpy==1.26.4
+# Add Pillow explicitly since it's required by reportlab
+Pillow>=9.0.0
