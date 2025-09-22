@@ -172,8 +172,10 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         """Handle POST requests for batch transcript generation."""
         try:
+            print("DEBUG: Received POST request")
             # Parse multipart form data
             content_type = self.headers.get('Content-Type', '')
+            print(f"DEBUG: Content-Type: {content_type}")
             if not content_type.startswith('multipart/form-data'):
                 self.send_error_response(400, 'Content-Type must be multipart/form-data')
                 return
@@ -189,47 +191,62 @@ class handler(BaseHTTPRequestHandler):
                 self.send_error_response(400, 'No boundary found in Content-Type')
                 return
 
+            print(f"DEBUG: Boundary extracted: {boundary}")
+
             # Read request body
             content_length = int(self.headers.get('Content-Length', 0))
+            print(f"DEBUG: Content-Length: {content_length}")
             if content_length == 0:
                 self.send_error_response(400, 'No data received')
                 return
 
             body = self.rfile.read(content_length)
+            print(f"DEBUG: Read {len(body)} bytes from request body")
             
             # Parse form data
             form_data = self.parse_multipart_form_data(body, boundary.encode())
             
             # Validate required fields
             if b'students_excel' not in form_data:
+                print("DEBUG: Missing students_excel field")
                 self.send_error_response(400, 'Missing students_excel file')
                 return
                 
             if b'author_info' not in form_data:
+                print("DEBUG: Missing author_info field")
                 self.send_error_response(400, 'Missing author_info file')
                 return
+
+            print("DEBUG: Both required fields found")
 
             # Parse author info YAML
             try:
                 author_yaml_content = form_data[b'author_info'].decode('utf-8')
+                print(f"DEBUG: Author YAML content length: {len(author_yaml_content)}")
+                print(f"DEBUG: Author YAML preview: {author_yaml_content[:100]}...")
                 author_data = yaml.safe_load(author_yaml_content)
                 if 'author' not in author_data:
                     raise ValueError("YAML must contain 'author' key")
                 author_info = author_data['author']
+                print("DEBUG: Author info parsed successfully")
             except Exception as e:
+                print(f"DEBUG: Error parsing author YAML: {str(e)}")
                 self.send_error_response(400, f'Invalid author info YAML: {str(e)}')
                 return
 
+            print("DEBUG: Starting batch generation")
             # Generate batch transcripts
             generator = BatchTranscriptGenerator()
             
             excel_data = form_data[b'students_excel']
+            print(f"DEBUG: Excel data size: {len(excel_data)} bytes")
             zip_content, zip_filename, student_names, generated_count = generator.generate_batch_transcripts_from_data(
                 excel_data, author_info
             )
             
             # Encode ZIP content as base64
             zip_base64 = base64.b64encode(zip_content).decode('utf-8')
+            print(f"DEBUG: Generated ZIP with {generated_count} transcripts")
             
             # Return success response
             response_data = {
@@ -245,22 +262,29 @@ class handler(BaseHTTPRequestHandler):
             
         except Exception as e:
             print(f"Error in batch transcript generation: {str(e)}")
+            import traceback
+            traceback.print_exc()
             self.send_error_response(500, f'Internal server error: {str(e)}')
 
     def parse_multipart_form_data(self, body, boundary):
         """Parse multipart/form-data from request body."""
+        print(f"DEBUG: Parsing multipart data with boundary: {boundary}")
         form_data = {}
         boundary_delimiter = b'--' + boundary
         parts = body.split(boundary_delimiter)
+        print(f"DEBUG: Found {len(parts)} parts in multipart data")
         
-        for part in parts[1:-1]:  # Skip first empty part and last closing part
+        for i, part in enumerate(parts[1:-1]):  # Skip first empty part and last closing part
+            print(f"DEBUG: Processing part {i+1}")
             if b'\r\n\r\n' in part:
                 headers_section, content = part.split(b'\r\n\r\n', 1)
                 headers = headers_section.decode('utf-8')
+                print(f"DEBUG: Headers: {headers}")
                 
                 # Extract field name
                 if 'name="' in headers:
                     field_name = headers.split('name="')[1].split('"')[0].encode('utf-8')
+                    print(f"DEBUG: Field name: {field_name}")
                     
                     # Remove trailing boundary markers
                     content_start = content.find(b'\r\n')
@@ -269,8 +293,10 @@ class handler(BaseHTTPRequestHandler):
                     else:
                         content = content.rstrip(b'\r\n--')
                     
+                    print(f"DEBUG: Content length for {field_name}: {len(content)} bytes")
                     form_data[field_name] = content
         
+        print(f"DEBUG: Extracted fields: {list(form_data.keys())}")
         return form_data
     
     def send_success_response(self, data):
