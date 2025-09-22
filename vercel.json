@@ -1,24 +1,13 @@
 {
   "functions": {
-    "api/test_cors.py": {
+    "api/*.py": {
       "runtime": "@vercel/python@4.2.0",
       "maxDuration": 30
-    },
-    "api/single_diagnostic.py": {
-      "runtime": "@vercel/python@4.2.0",
-      "maxDuration": 30
-    },
-    "api/single_debug.py": {
-      "runtime": "@vercel/python@4.2.0",
-      "maxDuration": 30
-    },
-    "api/single_working.py": {
-      "runtime": "@vercel/python@4.2.0",
-      "maxDuration": 30
-    },
-    "api/debug_imports.py": {
-      "runtime": "@vercel/python@4.2.0",
-      "maxDuration": 30
+    }
+  },
+  "build": {
+    "env": {
+      "PYTHONPATH": "."
     }
   },
   "rewrites": [
