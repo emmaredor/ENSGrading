@@ -8,12 +8,23 @@ import tempfile
 from datetime import datetime
 
 # Add the parent directory to the Python path to access existing modules
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
 
-from data_loader import DataLoader
-from text_formatter import TextFormatter
-from pdf_generator import TranscriptPDFGenerator
-from grades_processor import GradeValidator
+try:
+    from data_loader import DataLoader
+    from text_formatter import TextFormatter
+    from pdf_generator import TranscriptPDFGenerator
+    from grades_processor import GradeValidator
+except ImportError as e:
+    # Fallback for Vercel deployment
+    sys.path.append('/var/task')
+    from data_loader import DataLoader
+    from text_formatter import TextFormatter
+    from pdf_generator import TranscriptPDFGenerator
+    from grades_processor import GradeValidator
 
 
 class TranscriptGenerator:

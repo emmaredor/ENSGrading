@@ -15,12 +15,20 @@
     "api/single_working.py": {
       "runtime": "@vercel/python@4.2.0",
       "maxDuration": 30
+    },
+    "api/debug_imports.py": {
+      "runtime": "@vercel/python@4.2.0",
+      "maxDuration": 30
     }
   },
   "rewrites": [
     {
       "source": "/api/single",
       "destination": "/api/single_working.py"
+    },
+    {
+      "source": "/api/debug",
+      "destination": "/api/debug_imports.py"
     }
   ],
   "headers": [
