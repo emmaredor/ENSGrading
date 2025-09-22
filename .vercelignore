@@ -2,6 +2,7 @@
 .venv/
 venv/
 env/
+config/
 
 # Ignore Python cache
 __pycache__/
@@ -19,9 +20,21 @@ example_old.pdf
 # Ignore old versions
 main_old.py
 README_old.md
+README.md
+
+# Ignore original and minimal API functions (use proper versions only)
+api/generate-single.py
+api/generate-batch.py
+api/generate-single-minimal.py
+api/generate-batch-minimal.py
+api/lib/
+api/requirements.txt
 
 # Ignore git
 .git/
+.gitignore
 
 # Ignore development files
 script.sh
+grades.py
+requirements.txt
