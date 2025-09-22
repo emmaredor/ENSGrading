@@ -1,6 +1,8 @@
-# Lightweight dependencies for Vercel deployment
+# Dependencies for Railway deployment
 PyYAML==6.0.1
 reportlab==4.0.4
-# Temporarily excluding pandas and openpyxl to reduce bundle size
-pandas==1.5.3
+# Using newer pandas version with better pre-built wheel support
+pandas==2.1.4
 openpyxl==3.1.2
+# Additional dependencies that may be needed
+numpy>=1.24.0

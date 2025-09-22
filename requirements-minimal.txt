@@ -1,5 +1,0 @@
-# Minimal requirements for Vercel deployment
-PyYAML==6.0.1
-reportlab==4.0.4
-# openpyxl==3.1.2  # Only if Excel support is absolutely needed
-# pandas will be handled differently
