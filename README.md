@@ -221,16 +221,6 @@ Modifiez les styles dans `pdf_generator.py` :
 - Description du système de notation
 - Déclarations de certification
 
-
-## 🔍 Détails du Traitement des Notes
-
-### Échelle de Notation
-- 16-20 : Excellent (A+, 4.33 GPA)
-- 14-15.99 : Très Bien (A, 4.0 GPA)
-- 12-13.99 : Bien (A- à B+, 3.67-3.33 GPA)
-- 10-11.99 : Assez Bien (B à B-, 3.0-2.67 GPA)
-- < 10 : Échec (F, 0.0 GPA)
-
 ### Système de Compensation
 - Cours individuel : Crédits attribués seulement si note ≥ 10
 - Moyenne générale > 10 : Tous les crédits attribués par compensation
