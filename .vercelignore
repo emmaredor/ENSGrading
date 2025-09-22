@@ -30,7 +30,6 @@ api/generate-batch-minimal.py
 api/generate-single-proper.py
 api/generate-batch-proper.py
 api/lib/
-api/requirements.txt
 
 # Ignore git
 .git/
@@ -39,4 +38,3 @@ api/requirements.txt
 # Ignore development files
 script.sh
 grades.py
-requirements.txt
