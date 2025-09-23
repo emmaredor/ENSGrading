@@ -1,12 +1,12 @@
-# Dependencies for Railway deployment
+# Dependencies for Grades
 PyYAML==6.0.1
 reportlab==4.0.4
-# Using pandas version with good wheel support for faster builds
 pandas==2.1.4
 openpyxl==3.1.2
 # Pinned numpy version for stability
 numpy==1.26.4
-# Add Pillow explicitly since it's required by reportlab
 Pillow>=9.0.0
+# For deployement 
 flask>=2.0.0
 gunicorn>=20.0.0
+flask-cors>=3.0.0

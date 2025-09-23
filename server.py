@@ -2,8 +2,12 @@ from flask import Flask, request, jsonify
 import json
 from api.single import TranscriptGenerator as SingleTranscriptGenerator
 from api.batch import BatchTranscriptGenerator
+from flask_cors import CORS
 
 app = Flask(__name__)
+
+# Enable CORS for the Flask app
+CORS(app)
 
 # Initialize generators
 single_generator = SingleTranscriptGenerator()
