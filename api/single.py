@@ -129,9 +129,9 @@ class handler(BaseHTTPRequestHandler):
             
             # Extract and parse files
             try:
-                student_info_data = yaml.safe_load(form_data.get('student_info', b'').decode('utf-8'))
-                author_info_data = yaml.safe_load(form_data.get('author_info', b'').decode('utf-8'))
-                grades_data = json.loads(form_data.get('grades', b'').decode('utf-8'))
+                student_info_data = yaml.safe_load(form_data.get('student_info', b'').decode('utf-8', errors='replace'))
+                author_info_data = yaml.safe_load(form_data.get('author_info', b'').decode('utf-8', errors='replace'))
+                grades_data = json.loads(form_data.get('grades', b'').decode('utf-8', errors='replace'))
                 
                 if not all([student_info_data, author_info_data, grades_data]):
                     raise ValueError("Missing required data: student_info, author_info, or grades")

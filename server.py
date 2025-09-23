@@ -1,9 +1,10 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import json
 from api.single import TranscriptGenerator as SingleTranscriptGenerator
 from api.batch import BatchTranscriptGenerator
 from flask_cors import CORS
 import yaml
+from io import BytesIO
 
 app = Flask(__name__)
 
@@ -31,9 +32,9 @@ def generate_single():
                 return jsonify({"error": "Missing required fields"}), 400
 
             # Parse the uploaded files
-            student_data = yaml.safe_load(student_info.stream.read().decode('utf-8', errors='ignore'))
-            author_data = yaml.safe_load(author_info.stream.read().decode('utf-8', errors='ignore'))
-            grades_data = json.loads(grades.stream.read().decode('utf-8', errors='ignore'))
+            student_data = yaml.safe_load(student_info.stream.read().decode('utf-8', errors='replace'))
+            author_data = yaml.safe_load(author_info.stream.read().decode('utf-8', errors='replace'))
+            grades_data = json.loads(grades.stream.read().decode('utf-8', errors='replace'))
 
             # Generate the transcript
             pdf_content, filename, student_info = single_generator.generate_single_transcript_from_data(
@@ -64,20 +65,15 @@ def generate_batch():
 
         # Read the Excel file and author YAML file
         excel_data = excel_file.read()
-        author_info_data = yaml.safe_load(author_info_file.stream.read().decode('utf-8', errors='ignore'))
+        author_info_data = yaml.safe_load(author_info_file.stream.read().decode('utf-8', errors='replace'))
 
         # Generate the transcripts
         zip_content, zip_filename, student_names, generated_count = batch_generator.generate_batch_transcripts_from_data(
             excel_data, author_info_data
         )
 
-        # Return the ZIP content as a base64 string
-        return jsonify({
-            "zip_filename": zip_filename,
-            "zip_content": zip_content.decode('utf-8'),
-            "student_names": student_names,
-            "generated_count": generated_count
-        }), 200
+        # Return the ZIP file as a downloadable response
+        return send_file(BytesIO(zip_content), mimetype='application/zip', as_attachment=True, download_name=zip_filename)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
