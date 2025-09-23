@@ -151,8 +151,9 @@ class BatchTranscriptGenerator:
             print(f"\n✅ BATCH GENERATION COMPLETED")
             print(f"📄 Generated {successful_count} transcripts")
             print(f"📦 ZIP file: {zip_filename}")
+            print(f"👥 Students: {', '.join(student_names)}")
             
-            return zip_content, zip_filename, successful_count
+            return zip_content, zip_filename, successful_count, student_names
             
         finally:
             # Clean up temporary file

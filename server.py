@@ -124,7 +124,7 @@ def generate_batch():
             author_info = data_loader.load_author_info(author_path)
             
             # Generate the transcripts with bytes content and parsed author info
-            zip_content, zip_filename, generated_count = batch_generator.generate_batch_transcripts_from_data(
+            zip_content, zip_filename, generated_count, student_names = batch_generator.generate_batch_transcripts_from_data(
                 excel_data, author_info['author']  # Pass author info dict
             )
         finally:
@@ -142,7 +142,8 @@ def generate_batch():
             "success": True,
             "filename": zip_filename,
             "zip_data": zip_base64,
-            "generated_count": generated_count
+            "generated_count": generated_count,
+            "student_names": student_names  # Include student names in the response
         }), 200
 
     except Exception as e:
