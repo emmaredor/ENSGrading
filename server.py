@@ -31,14 +31,9 @@ def generate_single():
             if not (student_info and author_info and grades):
                 return jsonify({"error": "Missing required fields"}), 400
 
-            # Parse the uploaded files
-            student_data = yaml.safe_load(student_info.stream.read().decode('utf-8', errors='replace'))
-            author_data = yaml.safe_load(author_info.stream.read().decode('utf-8', errors='replace'))
-            grades_data = json.loads(grades.stream.read().decode('utf-8', errors='replace'))
-
             # Generate the transcript
             pdf_content, filename, student_info = single_generator.generate_single_transcript_from_data(
-                student_data, author_data, grades_data
+                student_info, author_info, grades
             )
 
             # Return the PDF content as a base64 string
@@ -62,14 +57,10 @@ def generate_batch():
 
         if not (excel_file and author_info_file):
             return jsonify({"error": "Missing required fields"}), 400
-
-        # Read the Excel file and author YAML file
-        excel_data = excel_file.read()
-        author_info_data = yaml.safe_load(author_info_file.stream.read().decode('utf-8', errors='replace'))
-
+        
         # Generate the transcripts
-        zip_content, zip_filename, student_names, generated_count = batch_generator.generate_batch_transcripts_from_data(
-            excel_data, author_info_data
+        zip_content, zip_filename = batch_generator.generate_batch_transcripts_from_data(
+            excel_file, author_info_file
         )
 
         # Return the ZIP file as a downloadable response
