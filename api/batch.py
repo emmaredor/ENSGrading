@@ -152,7 +152,7 @@ class BatchTranscriptGenerator:
             print(f"📄 Generated {successful_count} transcripts")
             print(f"📦 ZIP file: {zip_filename}")
             
-            return zip_content, zip_filename
+            return zip_content, zip_filename, successful_count
             
         finally:
             # Clean up temporary file

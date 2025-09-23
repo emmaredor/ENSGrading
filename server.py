@@ -124,7 +124,7 @@ def generate_batch():
             author_info = data_loader.load_author_info(author_path)
             
             # Generate the transcripts with bytes content and parsed author info
-            zip_content, zip_filename = batch_generator.generate_batch_transcripts_from_data(
+            zip_content, zip_filename, generated_count = batch_generator.generate_batch_transcripts_from_data(
                 excel_data, author_info['author']  # Pass author info dict
             )
         finally:
@@ -133,8 +133,17 @@ def generate_batch():
                 if os.path.exists(path):
                     os.remove(path)
 
-        # Return the ZIP file as a downloadable response
-        return send_file(BytesIO(zip_content), mimetype='application/zip', as_attachment=True, download_name=zip_filename)
+        # Convert the ZIP content to base64 for JSON response
+        import base64
+        zip_base64 = base64.b64encode(zip_content).decode('utf-8')
+        
+        # Return a JSON response with the base64 encoded ZIP data
+        return jsonify({
+            "success": True,
+            "filename": zip_filename,
+            "zip_data": zip_base64,
+            "generated_count": generated_count
+        }), 200
 
     except Exception as e:
         import traceback
