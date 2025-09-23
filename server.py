@@ -74,5 +74,5 @@ def generate_batch():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# Removed app.run(debug=True) to ensure compatibility with Gunicorn
+# The app object is now exposed for production use
