@@ -13,6 +13,11 @@ CORS(app)
 single_generator = SingleTranscriptGenerator()
 batch_generator = BatchTranscriptGenerator()
 
+@app.before_request
+def enforce_json_content_type():
+    if request.method in ['POST', 'PUT'] and not request.is_json:
+        return jsonify({"error": "Unsupported Media Type: Content-Type must be application/json"}), 415
+
 @app.route('/')
 def home():
     return "Welcome to the ENS Grading API!"
