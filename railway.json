@@ -5,7 +5,7 @@
     "buildCommand": "pip install --no-cache-dir -r requirements.txt"
   },
   "deploy": {
-    "startCommand": "python server.py",
+    "startCommand": "gunicorn --bind 0.0.0.0:$PORT server:app",
     "healthcheckPath": "/",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
