@@ -24,12 +24,17 @@ def generate_single():
     try:
         # Check if the request is multipart/form-data
         if request.content_type.startswith('multipart/form-data'):
-            student_info = request.files.get('student_info')
-            author_info = request.files.get('author_info')
-            grades = request.files.get('grades')
+            student_info_file = request.files.get('student_info')
+            author_info_file = request.files.get('author_info')
+            grades_file = request.files.get('grades')
 
-            if not (student_info and author_info and grades):
+            if not (student_info_file and author_info_file and grades_file):
                 return jsonify({"error": "Missing required fields"}), 400
+
+            # Parse the file contents into Python data structures
+            student_info = yaml.safe_load(student_info_file.read().decode('utf-8'))
+            author_info = yaml.safe_load(author_info_file.read().decode('utf-8'))
+            grades = json.loads(grades_file.read().decode('utf-8'))
 
             # Generate the transcript
             pdf_content, filename, student_info = single_generator.generate_single_transcript_from_data(
