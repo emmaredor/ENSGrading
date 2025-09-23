@@ -66,30 +66,16 @@ class MainHandler(BaseHTTPRequestHandler):
         try:
             if parsed_path.path == '/api/single':
                 # Delegate to single transcript handler
-                single_handler = SingleHandler()
-                # Copy necessary attributes
-                single_handler.request = self.request
-                single_handler.client_address = self.client_address
-                single_handler.server = self.server
-                single_handler.rfile = self.rfile
-                single_handler.wfile = self.wfile
-                single_handler.headers = self.headers
-                single_handler.command = self.command
-                single_handler.path = self.path
+                single_handler = SingleHandler(self.request, self.client_address, self.server)
+                single_handler.setup()
                 single_handler.do_POST()
+                single_handler.finish()
             elif parsed_path.path == '/api/batch':
                 # Delegate to batch transcript handler  
-                batch_handler = BatchHandler()
-                # Copy necessary attributes
-                batch_handler.request = self.request
-                batch_handler.client_address = self.client_address
-                batch_handler.server = self.server
-                batch_handler.rfile = self.rfile
-                batch_handler.wfile = self.wfile
-                batch_handler.headers = self.headers
-                batch_handler.command = self.command
-                batch_handler.path = self.path
+                batch_handler = BatchHandler(self.request, self.client_address, self.server)
+                batch_handler.setup()
                 batch_handler.do_POST()
+                batch_handler.finish()
             else:
                 # Unknown endpoint
                 self.send_response(404)
