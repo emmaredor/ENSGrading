@@ -3,6 +3,7 @@ import json
 from api.single import TranscriptGenerator as SingleTranscriptGenerator
 from api.batch import BatchTranscriptGenerator
 from flask_cors import CORS
+import yaml
 
 app = Flask(__name__)
 
@@ -13,11 +14,6 @@ CORS(app)
 single_generator = SingleTranscriptGenerator()
 batch_generator = BatchTranscriptGenerator()
 
-@app.before_request
-def enforce_json_content_type():
-    if request.method in ['POST', 'PUT'] and not request.is_json:
-        return jsonify({"error": "Unsupported Media Type: Content-Type must be application/json"}), 415
-
 @app.route('/')
 def home():
     return "Welcome to the ENS Grading API!"
@@ -25,30 +21,33 @@ def home():
 @app.route('/api/single', methods=['POST'])
 def generate_single():
     try:
-        # Extract JSON data from the request
-        data = request.json
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
+        # Check if the request is multipart/form-data
+        if request.content_type.startswith('multipart/form-data'):
+            student_info = request.files.get('student_info')
+            author_info = request.files.get('author_info')
+            grades = request.files.get('grades')
 
-        # Extract required fields
-        student_info = data.get("student_info")
-        author_info = data.get("author_info")
-        grades = data.get("grades")
+            if not (student_info and author_info and grades):
+                return jsonify({"error": "Missing required fields"}), 400
 
-        if not (student_info and author_info and grades):
-            return jsonify({"error": "Missing required fields"}), 400
+            # Parse the uploaded files
+            student_data = yaml.safe_load(student_info.stream)
+            author_data = yaml.safe_load(author_info.stream)
+            grades_data = json.load(grades.stream)
 
-        # Generate the transcript
-        pdf_content, filename, student_info = single_generator.generate_single_transcript_from_data(
-            student_info, author_info, grades
-        )
+            # Generate the transcript
+            pdf_content, filename, student_info = single_generator.generate_single_transcript_from_data(
+                student_data, author_data, grades_data
+            )
 
-        # Return the PDF content as a base64 string
-        return jsonify({
-            "filename": filename,
-            "pdf_content": pdf_content.decode('utf-8'),
-            "student_info": student_info
-        }), 200
+            # Return the PDF content as a base64 string
+            return jsonify({
+                "filename": filename,
+                "pdf_content": pdf_content.decode('utf-8'),
+                "student_info": student_info
+            }), 200
+
+        return jsonify({"error": "Unsupported Media Type: Content-Type must be multipart/form-data"}), 415
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
