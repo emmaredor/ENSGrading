@@ -73,11 +73,16 @@ def generate_single():
             import base64
             base64_pdf = base64.b64encode(pdf_content).decode('utf-8')
             
-            # Return the PDF content as a base64 string
+            # Format student name for the response
+            student_name = f"{student_info['firstname']} {student_info['name']}" if isinstance(student_info, dict) else ""
+            
+            # Return the PDF content as a base64 string with the expected field names
             return jsonify({
+                "success": True,
                 "filename": filename,
-                "pdf_content": base64_pdf,
-                "student_info": student_info
+                "pdf_data": base64_pdf,  # Changed from pdf_content to pdf_data to match client expectations
+                "student_name": student_name,  # Added student_name field
+                "student_info": student_info  # Keep the original field too
             }), 200
 
         return jsonify({"error": "Unsupported Media Type: Content-Type must be multipart/form-data"}), 415
