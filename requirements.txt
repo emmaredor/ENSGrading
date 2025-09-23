@@ -8,3 +8,4 @@ openpyxl==3.1.2
 numpy==1.26.4
 # Add Pillow explicitly since it's required by reportlab
 Pillow>=9.0.0
+flask>=2.0.0
