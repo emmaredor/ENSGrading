@@ -69,10 +69,14 @@ def generate_single():
                 student_info, author_info, grades
             )
 
+            # Convert binary PDF content to base64 string for JSON response
+            import base64
+            base64_pdf = base64.b64encode(pdf_content).decode('utf-8')
+            
             # Return the PDF content as a base64 string
             return jsonify({
                 "filename": filename,
-                "pdf_content": pdf_content.decode('utf-8'),
+                "pdf_content": base64_pdf,
                 "student_info": student_info
             }), 200
 
@@ -95,31 +99,32 @@ def generate_batch():
         if not (excel_file and author_info_file):
             return jsonify({"error": "Missing required fields"}), 400
         
-        # Create temporary files for processing
+        # Process the uploaded files
         import tempfile
         import os
         
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_excel:
-            temp_excel.write(excel_file.read())
-            excel_path = temp_excel.name
+        # Read the files' contents
+        excel_data = excel_file.read()
+        author_file_data = author_info_file.read()
         
+        # Create a temporary file for the author info
         with tempfile.NamedTemporaryFile(delete=False, suffix='.yaml') as temp_author:
-            temp_author.write(author_info_file.read())
+            temp_author.write(author_file_data)
             author_path = temp_author.name
         
         try:
-            # Use the data loader to read the author info properly
+            # Load author info using DataLoader
             from data_loader import DataLoader
             data_loader = DataLoader()
             author_info = data_loader.load_author_info(author_path)
             
-            # Generate the transcripts
+            # Generate the transcripts with bytes content and parsed author info
             zip_content, zip_filename = batch_generator.generate_batch_transcripts_from_data(
-                excel_file, author_info_file
+                excel_data, author_info['author']  # Pass author info dict
             )
         finally:
             # Clean up temporary files
-            for path in [excel_path, author_path]:
+            for path in [author_path]:
                 if os.path.exists(path):
                     os.remove(path)
 
