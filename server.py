@@ -31,9 +31,9 @@ def generate_single():
                 return jsonify({"error": "Missing required fields"}), 400
 
             # Parse the uploaded files
-            student_data = yaml.safe_load(student_info.stream)
-            author_data = yaml.safe_load(author_info.stream)
-            grades_data = json.load(grades.stream)
+            student_data = yaml.safe_load(student_info.stream.read().decode('utf-8', errors='ignore'))
+            author_data = yaml.safe_load(author_info.stream.read().decode('utf-8', errors='ignore'))
+            grades_data = json.loads(grades.stream.read().decode('utf-8', errors='ignore'))
 
             # Generate the transcript
             pdf_content, filename, student_info = single_generator.generate_single_transcript_from_data(
@@ -55,16 +55,16 @@ def generate_single():
 @app.route('/api/batch', methods=['POST'])
 def generate_batch():
     try:
-        # Extract files and author info from the request
+        # Extract files from the request
         excel_file = request.files.get("students_excel")
-        author_info = request.form.get("author_info")
+        author_info_file = request.files.get("author_info")
 
-        if not (excel_file and author_info):
+        if not (excel_file and author_info_file):
             return jsonify({"error": "Missing required fields"}), 400
 
-        # Read the Excel file and author info
+        # Read the Excel file and author YAML file
         excel_data = excel_file.read()
-        author_info_data = json.loads(author_info)
+        author_info_data = yaml.safe_load(author_info_file.stream.read().decode('utf-8', errors='ignore'))
 
         # Generate the transcripts
         zip_content, zip_filename, student_names, generated_count = batch_generator.generate_batch_transcripts_from_data(
@@ -81,6 +81,3 @@ def generate_batch():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-# Removed app.run(debug=True) to ensure compatibility with Gunicorn
-# The app object is now exposed for production use
