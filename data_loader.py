@@ -339,6 +339,12 @@ class ExcelStudentLoader:
             print(f"Detected program: {program_info['program_name']}")
             print(f"Detected school year: {program_info['school_year']}")
             
+            # Store these values as class-level attributes that will be accessible
+            # This ensures they're accessible by the main.py script
+            # Set them on the actual class
+            ExcelStudentLoader.program_name = program_info['program_name']
+            ExcelStudentLoader.school_year = program_info['school_year']
+            
             # In the new format, the header is in row 9, but we need to read row 11 onwards for actual data
             
             # Find the actual header row by looking for "Etud_Numér"

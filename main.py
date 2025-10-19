@@ -45,18 +45,18 @@ class TranscriptGenerator:
         self.grade_validator = GradeValidator()
         self.ranking_calculator = RankingCalculator()
     
-    def generate_single_transcript(self, student_info_path: Optional[str], 
-                                 author_info_path: Optional[str],
-                                 combined_info_path: Optional[str],
+    def generate_single_transcript(self, student_info_path: str, 
+                                 author_info_path: str,
+                                 year_info_path: str,
                                  grades_path: str,
                                  output_path: Optional[str] = None) -> str:
         """
         Generate a single student transcript.
         
         Args:
-            student_info_path: Path to student YAML file (None for legacy mode)
-            author_info_path: Path to author YAML file (None for legacy mode)
-            combined_info_path: Path to combined YAML file (legacy mode)
+            student_info_path: Path to student YAML file
+            author_info_path: Path to author YAML file
+            year_info_path: Path to year info YAML file
             grades_path: Path to grades JSON file
             output_path: Output PDF filename (auto-generated if None)
             
@@ -69,21 +69,17 @@ class TranscriptGenerator:
         """
         print("=== SINGLE TRANSCRIPT GENERATION ===")
         
-        # Load student and author data
-        if combined_info_path:
-            # Legacy mode: combined info file
-            print(f"Loading combined info from: {combined_info_path}")
-            student_data = self.data_loader.load_combined_info(combined_info_path)
-        else:
-            # New mode: separate student and author files
-            print(f"Loading student info from: {student_info_path}")
-            print(f"Loading author info from: {author_info_path}")
-            
-            student_info = self.data_loader.load_student_info(student_info_path)
-            author_info = self.data_loader.load_author_info(author_info_path)
-            
-            # Combine the data properly
-            student_data = self.text_formatter.combine_student_author_data(student_info, author_info)
+        # Load student, author and year data
+        print(f"Loading student info from: {student_info_path}")
+        print(f"Loading author info from: {author_info_path}")
+        print(f"Loading year info from: {year_info_path}")
+        
+        student_info = self.data_loader.load_student_info(student_info_path)
+        author_info = self.data_loader.load_author_info(author_info_path)
+        year_info = self.data_loader.load_year_info(year_info_path)
+        
+        # Combine the data properly
+        student_data = self.text_formatter.combine_student_author_data(student_info, author_info, year_info)
         
         # Validate student data
         if not self.text_formatter.validate_required_fields(student_data):
@@ -126,16 +122,15 @@ class TranscriptGenerator:
         return created_pdf
     
     def generate_batch_transcripts(self, excel_path: str, author_yaml_path: str, 
-                                 grades_template_path: Optional[str] = None,
-                                 output_dir: str = 'output') -> List[str]:
+                                 output_dir: str = 'output', display_rank: bool = False) -> List[str]:
         """
         Generate multiple transcripts from an Excel file.
         
         Args:
             excel_path: Path to Excel file containing student data
             author_yaml_path: Path to author YAML file
-            grades_template_path: Path to grades template (optional)
             output_dir: Output directory for generated PDFs
+            display_rank: Whether to display the rank column in the PDF
             
         Returns:
             List of paths to generated PDF files
@@ -159,10 +154,14 @@ class TranscriptGenerator:
         students = self.excel_loader.load_students_from_excel(excel_path)
         print(f"✅ Loaded {len(students)} students from Excel")
         
-        # Calculate subject rankings across all students
-        print("📊 Calculating subject rankings...")
-        all_rankings = self.ranking_calculator.calculate_rankings(students)
-        print(f"✅ Rankings calculated for {len(all_rankings)} subjects")
+        # Calculate subject rankings across all students if display_rank is True
+        all_rankings = {}
+        if display_rank:
+            print("📊 Calculating subject rankings...")
+            all_rankings = self.ranking_calculator.calculate_rankings(students)
+            print(f"✅ Rankings calculated for {len(all_rankings)} subjects")
+        else:
+            print("📊 Ranking display disabled, skipping rank calculation")
         
         # Create output directory if it doesn't exist
         if not os.path.exists(output_dir):
@@ -181,9 +180,26 @@ class TranscriptGenerator:
                     print(f"⚠️  Skipping student {i+1}: No grades found")
                     continue
                 
-                # Combine student data with author data
+                # Combine student data with author data and year info
+                # Extract program and school year info from Excel data if available
+                year_info = {'year': {}}
+                
+                # Use the program name detected during Excel loading if available
+                if hasattr(self.excel_loader, 'program_name') and self.excel_loader.program_name:
+                    year_info['year']['yearname'] = self.excel_loader.program_name
+                else:
+                    # Default fallback
+                    year_info['year']['yearname'] = 'First year of Master\'s degree in Computer Science'
+                
+                # Use the school year detected during Excel loading if available
+                if hasattr(self.excel_loader, 'school_year') and self.excel_loader.school_year:
+                    year_info['year']['schoolyear'] = self.excel_loader.school_year
+                else:
+                    # Default fallback
+                    year_info['year']['schoolyear'] = '2023-2024'
+                
                 student_data = self.text_formatter.combine_student_author_data(
-                    {'student': student_excel_data['student']}, author_data
+                    {'student': student_excel_data['student']}, author_data, year_info
                 )
                 
                 # Get student ID for ranking lookup
@@ -256,13 +272,10 @@ class CommandLineInterface:
             epilog="""
 Examples:
   # Single mode with separate files
-  python main.py --single --student-info config/info_student.yaml --author-info config/info_author.yaml --grades config/grades.json
-
-  # Legacy single mode
-  python main.py --single -i config/info.yaml --grades config/grades.json
+  python main.py --single --student-info config/info_student.yaml --author-info config/info_author.yaml --year-info config/info_year.yaml --grades config/grades.json
 
   # Batch mode
-  python main.py --batch --students-excel config/students.xlsx --author-yaml config/info_author.yaml -g config/grades.json
+  python main.py --batch --students-excel config/students.xlsx --author-yaml config/info_author.yaml
             """
         )
         
@@ -278,22 +291,22 @@ Examples:
                            help='Path to student info YAML file (single mode)')
         parser.add_argument('--author-info',
                            help='Path to author info YAML file (single mode)')
+        parser.add_argument('--year-info',
+                           help='Path to year info YAML file (single mode)')
         parser.add_argument('-g', '--grades',
-                           help='Path to grades JSON file (single mode)')
+                           help='Path to grades JSON file (single mode only)')
         
         # Batch mode arguments
         parser.add_argument('--students-excel',
                            help='Path to students Excel file (batch mode)')
         parser.add_argument('--author-yaml',
                            help='Path to author YAML file (batch mode)')
+        parser.add_argument('-r', '--rank', action='store_true',
+                           help='Display rank column in batch mode (if omitted, ranking will not be shown)')
         
         # Common arguments
         parser.add_argument('-o', '--output',
                            help='Output PDF filename (single mode) or output directory (batch mode)')
-        
-        # Legacy support
-        parser.add_argument('-i', '--info',
-                           help='Path to combined info YAML file (legacy single mode)')
         
         return parser
     
@@ -311,10 +324,12 @@ Examples:
     
     def _validate_single_mode_args(self, args: argparse.Namespace) -> None:
         """Validate arguments for single mode."""
-        if not args.student_info and not args.info:
-            self.parser.error("Single mode requires --student-info (or legacy -i/--info)")
-        if not args.author_info and not args.info:
-            self.parser.error("Single mode requires --author-info (or legacy -i/--info)")
+        if not args.student_info:
+            self.parser.error("Single mode requires --student-info")
+        if not args.author_info:
+            self.parser.error("Single mode requires --author-info")
+        if not args.year_info:
+            self.parser.error("Single mode requires --year-info")
         if not args.grades:
             self.parser.error("Single mode requires --grades")
     
@@ -324,6 +339,8 @@ Examples:
             self.parser.error("Batch mode requires --students-excel")
         if not args.author_yaml:
             self.parser.error("Batch mode requires --author-yaml")
+        if args.grades:
+            self.parser.error("The -g/--grades option is not supported in batch mode as grades are loaded from the Excel file")
 
 
 def fix_macos_hashlib():
@@ -356,7 +373,7 @@ def main():
             generator.generate_single_transcript(
                 student_info_path=args.student_info,
                 author_info_path=args.author_info,
-                combined_info_path=args.info,
+                year_info_path=args.year_info,
                 grades_path=args.grades,
                 output_path=args.output
             )
@@ -366,8 +383,8 @@ def main():
             generator.generate_batch_transcripts(
                 excel_path=args.students_excel,
                 author_yaml_path=args.author_yaml,
-                grades_template_path=args.grades,
-                output_dir=output_dir
+                output_dir=output_dir,
+                display_rank=args.rank  # Pass the rank display preference
             )
     except FileNotFoundError as e:
         print(f"❌ Error: File not found - {e}")
