@@ -40,7 +40,7 @@ class BatchTranscriptGenerator:
         self.grade_validator = GradeValidator()
         self.ranking_calculator = RankingCalculator()
 
-    def generate_batch_transcripts_from_data(self, excel_data, author_info_data, display_rank=False):
+    def generate_batch_transcripts_from_data(self, excel_data, author_info_data, display_rank=False, year_info_data=None):
         """
         Generate multiple student transcripts from Excel data.
         
@@ -48,6 +48,7 @@ class BatchTranscriptGenerator:
             excel_data: Bytes content of Excel file
             author_info_data: Dict containing author information
             display_rank: Whether to display rank column in the PDF
+            year_info_data: Dict containing year information (optional)
             
         Returns:
             Tuple of (zip_content, zip_filename, student_names, generated_count)
@@ -58,6 +59,8 @@ class BatchTranscriptGenerator:
         with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as excel_temp:
             excel_temp.write(excel_data)
             excel_temp_path = excel_temp.name
+            print(f"📊 Excel file saved to temp: {excel_temp_path}")
+            print(f"👤 Using author info from form data")
         
         try:
             # Load students from Excel
@@ -74,9 +77,9 @@ class BatchTranscriptGenerator:
                 print("📊 Ranking display disabled, skipping rank calculation")
             
             # Load text templates
-            text_templates = self.data_loader.load_text_templates(
-                os.path.join(parent_dir, 'assets/text.json')
-            )
+            text_templates_path = os.path.join(parent_dir, 'assets', 'text.json')
+            print(f"Loading text templates from: {text_templates_path}")
+            text_templates = self.data_loader.load_text_templates(text_templates_path)
             
             generated_pdfs = []
             student_names = []
@@ -95,9 +98,32 @@ class BatchTranscriptGenerator:
                             print(f"⚠️  Skipping student {i+1}: No grades found")
                             continue
                         
-                        # Combine student data with author data
+                        # Set up year info if not provided
+                        if year_info_data is None:
+                            # Create year info based on Excel data if possible
+                            current_year_info = {'year': {}}
+                            
+                            # Use the program name detected during Excel loading if available
+                            if hasattr(self.excel_loader, 'program_name') and self.excel_loader.program_name:
+                                current_year_info['year']['yearname'] = self.excel_loader.program_name
+                            else:
+                                # Default fallback
+                                current_year_info['year']['yearname'] = 'First year of Master\'s degree in Computer Science'
+                            
+                            # Use the school year detected during Excel loading if available
+                            if hasattr(self.excel_loader, 'school_year') and self.excel_loader.school_year:
+                                current_year_info['year']['schoolyear'] = self.excel_loader.school_year
+                            else:
+                                # Default fallback
+                                current_year_info['year']['schoolyear'] = '2023-2024'
+                        else:
+                            current_year_info = year_info_data
+                        
+                        # Combine student data with author data and year info
                         student_data = self.text_formatter.combine_student_author_data(
-                            {'student': student_excel_data['student']}, {'author': author_info_data}
+                            {'student': student_excel_data['student']}, 
+                            {'author': author_info_data}, 
+                            current_year_info
                         )
                         
                         student_name = f"{student_data['student']['firstname']} {student_data['student']['name']}"
@@ -161,6 +187,8 @@ class BatchTranscriptGenerator:
                         
                     except Exception as e:
                         print(f"❌ Error processing student {i+1}: {str(e)}")
+                        import traceback
+                        traceback.print_exc()
                         continue
             
             # Get ZIP content
@@ -172,12 +200,12 @@ class BatchTranscriptGenerator:
             zip_filename = f"batch_transcripts_{timestamp}.zip"
             
             print(f"\n✅ BATCH GENERATION COMPLETED")
-            print(f"📄 Generated {successful_count} transcripts")
+            print(f"🎉 Successfully generated: {successful_count}/{len(students)} transcripts")
             print(f"📦 ZIP file: {zip_filename}")
             print(f"👥 Students: {', '.join(student_names)}")
             
-            return zip_content, zip_filename, successful_count, student_names
-            
+            return zip_content, zip_filename, student_names, successful_count
+        
         finally:
             # Clean up temporary file
             if os.path.exists(excel_temp_path):
@@ -269,10 +297,20 @@ class handler(BaseHTTPRequestHandler):
                 display_rank = rank_value in ('true', '1', 'yes', 'on')
                 print(f"DEBUG: Rank display setting: {display_rank}")
             
+            # Check for year info
+            year_info_data = None
+            if b'year_info' in form_data:
+                try:
+                    year_info_content = form_data[b'year_info'].decode('utf-8', errors='replace')
+                    year_info_data = yaml.safe_load(year_info_content)
+                    print("DEBUG: Year info parsed successfully")
+                except Exception as e:
+                    print(f"DEBUG: Error parsing year info: {str(e)}")
+            
             excel_data = form_data[b'students_excel']
             print(f"DEBUG: Excel data size: {len(excel_data)} bytes")
             zip_content, zip_filename, student_names, generated_count = generator.generate_batch_transcripts_from_data(
-                excel_data, author_info, display_rank
+                excel_data, author_info, display_rank, year_info_data
             )
             
             # Encode ZIP content as base64
