@@ -19,14 +19,14 @@ try:
     from data_loader import DataLoader, ExcelStudentLoader
     from text_formatter import TextFormatter
     from pdf_generator import TranscriptPDFGenerator
-    from grades_processor import GradeValidator
+    from grades_processor import GradeValidator, RankingCalculator
 except ImportError as e:
     # Fallback for Vercel deployment
     sys.path.append('/var/task')
     from data_loader import DataLoader, ExcelStudentLoader
     from text_formatter import TextFormatter
     from pdf_generator import TranscriptPDFGenerator
-    from grades_processor import GradeValidator
+    from grades_processor import GradeValidator, RankingCalculator
 
 
 class BatchTranscriptGenerator:
@@ -38,14 +38,16 @@ class BatchTranscriptGenerator:
         self.text_formatter = TextFormatter()
         self.pdf_generator = TranscriptPDFGenerator()
         self.grade_validator = GradeValidator()
+        self.ranking_calculator = RankingCalculator()
 
-    def generate_batch_transcripts_from_data(self, excel_data, author_info_data):
+    def generate_batch_transcripts_from_data(self, excel_data, author_info_data, display_rank=False):
         """
         Generate multiple student transcripts from Excel data.
         
         Args:
             excel_data: Bytes content of Excel file
             author_info_data: Dict containing author information
+            display_rank: Whether to display rank column in the PDF
             
         Returns:
             Tuple of (zip_content, zip_filename, student_names, generated_count)
@@ -61,6 +63,15 @@ class BatchTranscriptGenerator:
             # Load students from Excel
             students = self.excel_loader.load_students_from_excel(excel_temp_path)
             print(f"✅ Loaded {len(students)} students from Excel")
+            
+            # Calculate subject rankings across all students if display_rank is True
+            all_rankings = {}
+            if display_rank:
+                print("📊 Calculating subject rankings...")
+                all_rankings = self.ranking_calculator.calculate_rankings(students)
+                print(f"✅ Rankings calculated for {len(all_rankings)} subjects")
+            else:
+                print("📊 Ranking display disabled, skipping rank calculation")
             
             # Load text templates
             text_templates = self.data_loader.load_text_templates(
@@ -105,6 +116,18 @@ class BatchTranscriptGenerator:
                         # Create grades for PDF generation
                         grades_for_pdf = student_excel_data['grades']
                         
+                        # Get student-specific rankings if enabled
+                        student_rankings = None
+                        if display_rank:
+                            # Get student ID for ranking lookup
+                            student_id = f"{student_data['student']['firstname']} {student_data['student']['name']}"
+                            # Get student-specific rankings
+                            student_rankings = {}
+                            for course in student_excel_data['grades']:
+                                if course in all_rankings and student_id in all_rankings[course]:
+                                    student_rankings[course] = all_rankings[course][student_id]
+                            print(f"🏅 Rankings: {len(student_rankings)} courses have rankings")
+                        
                         # Generate PDF filename
                         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                         pdf_filename = f"{student_data['student']['firstname']}_{student_data['student']['name']}_transcript_{timestamp}_{i+1:03d}.pdf"
@@ -116,7 +139,7 @@ class BatchTranscriptGenerator:
                         try:
                             # Generate PDF using the correct method
                             created_pdf = self.pdf_generator.generate_transcript(
-                                formatted_texts, student_data, grades_for_pdf, pdf_temp_path
+                                formatted_texts, student_data, grades_for_pdf, pdf_temp_path, student_rankings
                             )
                             
                             # Read the generated PDF
@@ -239,10 +262,17 @@ class handler(BaseHTTPRequestHandler):
             # Generate batch transcripts
             generator = BatchTranscriptGenerator()
             
+            # Check if rank flag is present
+            display_rank = False
+            if b'display_rank' in form_data:
+                rank_value = form_data[b'display_rank'].decode('utf-8').lower()
+                display_rank = rank_value in ('true', '1', 'yes', 'on')
+                print(f"DEBUG: Rank display setting: {display_rank}")
+            
             excel_data = form_data[b'students_excel']
             print(f"DEBUG: Excel data size: {len(excel_data)} bytes")
             zip_content, zip_filename, student_names, generated_count = generator.generate_batch_transcripts_from_data(
-                excel_data, author_info
+                excel_data, author_info, display_rank
             )
             
             # Encode ZIP content as base64

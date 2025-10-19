@@ -103,18 +103,18 @@ class DataLoader:
         return {'author': data['author']} if 'author' in data else data
     
     @classmethod
-    def load_combined_info(cls, file_path: str) -> Dict[str, Any]:
+    def load_year_info(cls, file_path: str) -> Dict[str, Any]:
         """
-        Load combined student and author information from a single YAML file.
-        This is for legacy support.
+        Load year information from a YAML file.
         
         Args:
-            file_path: Path to the combined info YAML file
+            file_path: Path to the year info YAML file
             
         Returns:
-            Dictionary containing both student and author data
+            Dictionary with year data, ensuring 'year' key exists
         """
-        return cls.load_yaml_file(file_path)
+        data = cls.load_yaml_file(file_path)
+        return {'year': data['year']} if 'year' in data else data
     
     @classmethod
     def load_text_templates(cls, file_path: str) -> Dict[str, str]:

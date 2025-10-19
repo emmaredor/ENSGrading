@@ -187,18 +187,39 @@ class PDFTableGenerator:
         # Get table data from grades processor
         table_data, passed_all = self.grade_table_generator.create_grades_table(grades_data, subject_rankings)
         
+        # Determine if rank column should be displayed (if subject_rankings is empty or None, don't show ranks)
+        display_rank = subject_rankings is not None and len(subject_rankings) > 0
+        
         # Create table with appropriate column widths
-        grades_table = Table(
-            table_data,
-            colWidths=[
-                available_width * 0.36,  # Course Title
-                available_width * 0.13,  # Credits Awarded
-                available_width * 0.13,  # Grade out of 20
-                available_width * 0.13,  # Letter Grade
-                available_width * 0.15,  # GPA
-                available_width * 0.10   # Rank
-            ]
-        )
+        if display_rank:
+            grades_table = Table(
+                table_data,
+                colWidths=[
+                    available_width * 0.36,  # Course Title
+                    available_width * 0.13,  # Credits Awarded
+                    available_width * 0.13,  # Grade out of 20
+                    available_width * 0.13,  # Letter Grade
+                    available_width * 0.15,  # GPA
+                    available_width * 0.10   # Rank
+                ]
+            )
+        else:
+            # Remove rank column from table_data
+            for row in table_data:
+                if len(row) > 5:  # Make sure there's a rank column to remove
+                    row.pop()  # Remove the last column (rank)
+                    
+            # Adjust column widths without rank column
+            grades_table = Table(
+                table_data,
+                colWidths=[
+                    available_width * 0.38,  # Course Title - slightly wider
+                    available_width * 0.14,  # Credits Awarded
+                    available_width * 0.14,  # Grade out of 20
+                    available_width * 0.14,  # Letter Grade
+                    available_width * 0.20   # GPA - wider
+                ]
+            )
         
         # Apply table styling
         grades_table.setStyle(self._get_grades_table_style())

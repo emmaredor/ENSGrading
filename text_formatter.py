@@ -101,13 +101,15 @@ class TextFormatter:
     
     @staticmethod
     def combine_student_author_data(student_info: Dict[str, Any], 
-                                  author_info: Dict[str, Any]) -> Dict[str, Any]:
+                                  author_info: Dict[str, Any],
+                                  year_info: Dict[str, Any] = None) -> Dict[str, Any]:
         """
-        Combine student and author information into a single data structure.
+        Combine student, author, and year information into a single data structure.
         
         Args:
             student_info: Dictionary containing student information
             author_info: Dictionary containing author information
+            year_info: Optional dictionary containing year information
             
         Returns:
             Combined dictionary with proper structure for template processing
@@ -116,11 +118,22 @@ class TextFormatter:
         student_data = student_info.get('student', student_info)
         author_data = author_info.get('author', author_info)
         
-        # Add author's yearname and schoolyear to student data if missing
-        if 'yearname' not in student_data and 'yearname' in author_data:
-            student_data['yearname'] = author_data['yearname']
-        if 'schoolyear' not in student_data and 'schoolyear' in author_data:
-            student_data['schoolyear'] = author_data['schoolyear']
+        # Include year data if provided
+        if year_info:
+            year_data = year_info.get('year', year_info)
+            
+            # Add year info to student data
+            if 'yearname' not in student_data and 'yearname' in year_data:
+                student_data['yearname'] = year_data['yearname']
+            if 'school_year' not in student_data and 'school_year' in year_data:
+                student_data['school_year'] = year_data['school_year']
+            if 'program' not in student_data and 'program' in year_data:
+                student_data['program'] = year_data['program']
+            # For backwards compatibility
+            if 'schoolyear' not in student_data and 'schoolyear' in year_data:
+                student_data['schoolyear'] = year_data['schoolyear']
+            if 'yearname' not in student_data and 'schoolyear' in year_data:
+                student_data['yearname'] = year_data['schoolyear']
         
         return {
             'student': student_data,
@@ -138,7 +151,7 @@ class TextFormatter:
         Returns:
             True if all required fields are present, False otherwise
         """
-        required_student_fields = ['name', 'firstname']
+        required_student_fields = ['name', 'firstname', 'yearname']
         required_author_fields = ['name', 'firstname']
         
         student_info = student_data.get('student', {})

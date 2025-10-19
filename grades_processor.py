@@ -151,10 +151,18 @@ class GradeTableGenerator:
         # Store subject rankings if provided
         self.subject_rankings = subject_rankings or {}
         
+        # Determine if rank column should be displayed
+        display_rank = self.subject_rankings is not None and len(self.subject_rankings) > 0
+        
         # Table headers
-        table_data = [
-            ['Course Title', 'Credits\nAwarded', 'Grade out\nof 20', 'Letter\nGrade', 'GPA', 'Rank']
-        ]
+        if display_rank:
+            table_data = [
+                ['Course Title', 'Credits\nAwarded', 'Grade out\nof 20', 'Letter\nGrade', 'GPA', 'Rank']
+            ]
+        else:
+            table_data = [
+                ['Course Title', 'Credits\nAwarded', 'Grade out\nof 20', 'Letter\nGrade', 'GPA']
+            ]
         
         # Track overall statistics
         passed_all = True
@@ -217,14 +225,23 @@ class GradeTableGenerator:
                     ranking = str(rank_info)
             
             # Add course row to table
-            table_data.append([
-                course_title,
-                credits_display,
-                grade_display,
-                letter_grade,
-                gpa,
-                ranking
-            ])
+            if display_rank:
+                table_data.append([
+                    course_title,
+                    credits_display,
+                    grade_display,
+                    letter_grade,
+                    gpa,
+                    ranking
+                ])
+            else:
+                table_data.append([
+                    course_title,
+                    credits_display,
+                    grade_display,
+                    letter_grade,
+                    gpa
+                ])
         
         # Calculate summary statistics
         average_grade = total_grade_sum / total_courses if total_courses > 0 else 0
@@ -241,7 +258,7 @@ class GradeTableGenerator:
         
         # Add summary row
         summary_row = self._create_summary_row(
-            credits_for_totals, average_grade, cumulative_gpa
+            credits_for_totals, average_grade, cumulative_gpa, display_rank
         )
         table_data.append(summary_row)
         
@@ -292,18 +309,27 @@ class GradeTableGenerator:
             return total_grade_points / actual_credits_earned if actual_credits_earned > 0 else 0
     
     def _create_summary_row(self, credits_for_totals: int, average_grade: float, 
-                          cumulative_gpa: float) -> List[str]:
+                          cumulative_gpa: float, display_rank: bool = True) -> List[str]:
         """Create the summary row for the grades table."""
         avg_letter_grade, _ = self.converter.grade_to_letter_and_gpa(average_grade)
         
-        return [
-            'TOTALS',
-            f'{credits_for_totals}',
-            f'{average_grade:.2f}',
-            avg_letter_grade,
-            f'{cumulative_gpa:.2f}',
-            '-'  # No ranking for totals row
-        ]
+        if display_rank:
+            return [
+                'TOTALS',
+                f'{credits_for_totals}',
+                f'{average_grade:.2f}',
+                avg_letter_grade,
+                f'{cumulative_gpa:.2f}',
+                '-'  # No ranking for totals row
+            ]
+        else:
+            return [
+                'TOTALS',
+                f'{credits_for_totals}',
+                f'{average_grade:.2f}',
+                avg_letter_grade,
+                f'{cumulative_gpa:.2f}'
+            ]
 
 
 class RankingCalculator:
