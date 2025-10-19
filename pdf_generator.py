@@ -171,29 +171,32 @@ class PDFTableGenerator:
         self.grade_table_generator = GradeTableGenerator()
     
     def create_grades_table(self, grades_data: Dict[str, List[float]], 
-                          available_width: float) -> Tuple[Table, bool]:
+                          available_width: float,
+                          subject_rankings: Dict[str, Dict[str, int]] = None) -> Tuple[Table, bool]:
         """
         Create a formatted grades table.
         
         Args:
             grades_data: Dictionary containing grades information
             available_width: Available width for the table
+            subject_rankings: Optional dictionary with student rankings per subject
             
         Returns:
             Tuple of (table_object, passed_all_courses)
         """
         # Get table data from grades processor
-        table_data, passed_all = self.grade_table_generator.create_grades_table(grades_data)
+        table_data, passed_all = self.grade_table_generator.create_grades_table(grades_data, subject_rankings)
         
         # Create table with appropriate column widths
         grades_table = Table(
             table_data,
             colWidths=[
-                available_width * 0.40,  # Course Title
-                available_width * 0.14,  # Credits Awarded
-                available_width * 0.14,  # Grade out of 20
-                available_width * 0.14,  # Letter Grade
-                available_width * 0.18   # GPA
+                available_width * 0.36,  # Course Title
+                available_width * 0.13,  # Credits Awarded
+                available_width * 0.13,  # Grade out of 20
+                available_width * 0.13,  # Letter Grade
+                available_width * 0.15,  # GPA
+                available_width * 0.10   # Rank
             ]
         )
         
@@ -277,7 +280,8 @@ class TranscriptPDFGenerator:
     def generate_transcript(self, formatted_texts: Dict[str, str], 
                           student_data: Dict[str, Any], 
                           grades_data: Dict[str, List[float]], 
-                          output_filename: str) -> str:
+                          output_filename: str,
+                          subject_rankings: Dict[str, int] = None) -> str:
         """
         Generate a complete student transcript PDF.
         
@@ -286,6 +290,7 @@ class TranscriptPDFGenerator:
             student_data: Student and author information
             grades_data: Grades information
             output_filename: Output PDF filename
+            subject_rankings: Optional dictionary with student rankings per subject
             
         Returns:
             Path to the generated PDF file
@@ -318,7 +323,8 @@ class TranscriptPDFGenerator:
         # Add grades table
         try:
             available_width = A4[0] - doc.leftMargin - doc.rightMargin - 8
-            grades_table, passed_all = self.table_generator.create_grades_table(grades_data, available_width)
+            grades_table, passed_all = self.table_generator.create_grades_table(
+                grades_data, available_width, subject_rankings)
             story.append(grades_table)
             
             # Add note for failed courses if needed

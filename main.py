@@ -31,7 +31,7 @@ from typing import Dict, Any, List, Optional
 from data_loader import DataLoader, ExcelStudentLoader
 from text_formatter import TextFormatter
 from pdf_generator import TranscriptPDFGenerator
-from grades_processor import GradeValidator
+from grades_processor import GradeValidator, RankingCalculator
 
 
 class TranscriptGenerator:
@@ -43,6 +43,7 @@ class TranscriptGenerator:
         self.text_formatter = TextFormatter()
         self.pdf_generator = TranscriptPDFGenerator()
         self.grade_validator = GradeValidator()
+        self.ranking_calculator = RankingCalculator()
     
     def generate_single_transcript(self, student_info_path: Optional[str], 
                                  author_info_path: Optional[str],
@@ -158,6 +159,11 @@ class TranscriptGenerator:
         students = self.excel_loader.load_students_from_excel(excel_path)
         print(f"✅ Loaded {len(students)} students from Excel")
         
+        # Calculate subject rankings across all students
+        print("📊 Calculating subject rankings...")
+        all_rankings = self.ranking_calculator.calculate_rankings(students)
+        print(f"✅ Rankings calculated for {len(all_rankings)} subjects")
+        
         # Create output directory if it doesn't exist
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -180,8 +186,18 @@ class TranscriptGenerator:
                     {'student': student_excel_data['student']}, author_data
                 )
                 
+                # Get student ID for ranking lookup
+                student_id = f"{student_data['student']['firstname']} {student_data['student']['name']}"
+                
+                # Get student-specific rankings
+                student_rankings = {}
+                for course in student_excel_data['grades']:
+                    if course in all_rankings and student_id in all_rankings[course]:
+                        student_rankings[course] = all_rankings[course][student_id]
+                
                 print(f"👤 Student: {student_data['student']['firstname']} {student_data['student']['name']}")
                 print(f"📚 Courses: {len(student_excel_data['grades'])}")
+                print(f"🏅 Rankings: {len(student_rankings)} courses have rankings")
                 
                 # Validate grades data
                 is_valid, errors = self.grade_validator.validate_grades_data(student_excel_data['grades'])
@@ -201,9 +217,9 @@ class TranscriptGenerator:
                 temp_grades_file = os.path.join(output_dir, f"temp_grades_{i+1:03d}.json")
                 self.data_loader.save_json_file(student_excel_data['grades'], temp_grades_file)
                 
-                # Generate PDF
+                # Generate PDF with rankings
                 created_pdf = self.pdf_generator.generate_transcript(
-                    formatted_texts, student_data, student_excel_data['grades'], pdf_path
+                    formatted_texts, student_data, student_excel_data['grades'], pdf_path, student_rankings
                 )
                 
                 # Clean up temporary grades file

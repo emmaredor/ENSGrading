@@ -132,22 +132,28 @@ class GradeTableGenerator:
     def __init__(self):
         self.converter = GradeConverter()
         self.calculator = CreditCalculator()
+        # Store subject rankings for access across methods
+        self.subject_rankings = {}
     
-    def create_grades_table(self, grades_data: Dict[str, List[float]]) -> Tuple[List[List[str]], bool]:
+    def create_grades_table(self, grades_data: Dict[str, List[float]], subject_rankings: Dict[str, Dict[str, int]] = None) -> Tuple[List[List[str]], bool]:
         """
         Create a formatted grades table from grades data.
         
         Args:
             grades_data: Dictionary mapping course names to [grade, credits_obtained, max_credits]
+            subject_rankings: Optional dictionary mapping course names to student rankings
             
         Returns:
             Tuple of (table_data, passed_all_courses)
             - table_data: List of lists representing table rows
             - passed_all_courses: Boolean indicating if all courses were passed individually
         """
+        # Store subject rankings if provided
+        self.subject_rankings = subject_rankings or {}
+        
         # Table headers
         table_data = [
-            ['Course Title', 'Credits\nAwarded', 'Grade out\nof 20', 'Letter\nGrade', 'GPA']
+            ['Course Title', 'Credits\nAwarded', 'Grade out\nof 20', 'Letter\nGrade', 'GPA', 'Rank']
         ]
         
         # Track overall statistics
@@ -200,13 +206,24 @@ class GradeTableGenerator:
                 total_courses += 1
                 total_max_credits += max_credits
             
+            # Get ranking for this course if available
+            student_name = "" # This would typically come from the student data
+            ranking = "-"
+            if course_title in self.subject_rankings:
+                rank_info = self.subject_rankings.get(course_title, {})
+                if isinstance(rank_info, dict) and "rank" in rank_info and "total" in rank_info:
+                    ranking = f"{rank_info['rank']}/{rank_info['total']}"
+                elif rank_info:
+                    ranking = str(rank_info)
+            
             # Add course row to table
             table_data.append([
                 course_title,
                 credits_display,
                 grade_display,
                 letter_grade,
-                gpa
+                gpa,
+                ranking
             ])
         
         # Calculate summary statistics
@@ -284,8 +301,89 @@ class GradeTableGenerator:
             f'{credits_for_totals}',
             f'{average_grade:.2f}',
             avg_letter_grade,
-            f'{cumulative_gpa:.2f}'
+            f'{cumulative_gpa:.2f}',
+            '-'  # No ranking for totals row
         ]
+
+
+class RankingCalculator:
+    """Calculates student rankings for courses across multiple students."""
+    
+    @staticmethod
+    def calculate_rankings(all_student_grades: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """
+        Calculate student rankings for each subject across all students.
+        
+        Args:
+            all_student_grades: List of dictionaries, each containing student info and grades
+            
+        Returns:
+            Dictionary mapping course names to dictionaries of student IDs to ranking information
+            Format: {course: {student_id: {"rank": rank, "total": total_students}}}
+        """
+        # Create a dictionary to store grades per subject
+        subject_grades = {}
+        
+        # Collect all grades by subject
+        for student_data in all_student_grades:
+            student_id = f"{student_data['student']['firstname']} {student_data['student']['name']}"
+            grades = student_data['grades']
+            
+            for course, grade_info in grades.items():
+                if course not in subject_grades:
+                    subject_grades[course] = []
+                
+                # Store tuple of (student_id, grade)
+                subject_grades[course].append((student_id, grade_info[0]))
+        
+        # Calculate rankings for each subject
+        subject_rankings = {}
+        
+        for subject, grades_list in subject_grades.items():
+            # Sort by grade in descending order
+            sorted_grades = sorted(grades_list, key=lambda x: x[1], reverse=True)
+            total_students = len(sorted_grades)
+            
+            # Assign rankings
+            rankings = {}
+            current_rank = 1
+            current_grade = None
+            
+            for i, (student_id, grade) in enumerate(sorted_grades):
+                # Same grade gets same rank
+                if grade != current_grade:
+                    current_rank = i + 1
+                    current_grade = grade
+                
+                # Store both rank and total students
+                rankings[student_id] = {
+                    "rank": current_rank,
+                    "total": total_students
+                }
+            
+            subject_rankings[subject] = rankings
+            
+        return subject_rankings
+    
+    @staticmethod
+    def get_student_rankings(student_id: str, all_rankings: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Get rankings for a specific student across all subjects.
+        
+        Args:
+            student_id: Student identifier (typically firstname + name)
+            all_rankings: Dictionary mapping course names to dictionaries of student IDs to ranking information
+            
+        Returns:
+            Dictionary mapping course names to student's ranking information
+        """
+        student_rankings = {}
+        
+        for course, rankings in all_rankings.items():
+            if student_id in rankings:
+                student_rankings[course] = rankings[student_id]
+        
+        return student_rankings
 
 
 class GradeValidator:
