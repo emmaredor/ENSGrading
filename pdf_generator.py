@@ -25,6 +25,7 @@ from reportlab.lib import colors
 from text_formatter import TextFormatter
 from grades_processor import GradeTableGenerator, GradeConverter
 
+no_grades_placeholder = "N/A"
 
 class PDFStyleManager:
     """Manages PDF styles and formatting."""
@@ -170,6 +171,31 @@ class PDFTableGenerator:
     def __init__(self):
         self.grade_table_generator = GradeTableGenerator()
     
+    def _sanitize_table_data(self, table_data: List[List[Any]]) -> List[List[Any]]:
+        """
+        Sanitize table data to ensure all cells are strings or Flowable objects.
+        Converts tuples, lists, and other objects to their string representation.
+        
+        Args:
+            table_data: Raw table data potentially containing mixed types
+            
+        Returns:
+            Sanitized table data with all cells as proper types
+        """
+        sanitized = []
+        for row in table_data:
+            sanitized_row = []
+            for cell in row:
+                # If it's a tuple or list, convert to string
+                if isinstance(cell, (tuple, list)):
+                    cell = str(cell[0]) if cell else no_grades_placeholder
+                # If it's not a string or Flowable already, convert to string
+                elif not isinstance(cell, str) and not hasattr(cell, 'wrapOn'):
+                    cell = str(cell)
+                sanitized_row.append(cell)
+            sanitized.append(sanitized_row)
+        return sanitized
+    
     def create_grades_table(self, grades_data: Dict[str, List[float]], 
                           available_width: float,
                           subject_rankings: Dict[str, Dict[str, int]] = None) -> Tuple[Table, bool]:
@@ -186,6 +212,9 @@ class PDFTableGenerator:
         """
         # Get table data from grades processor
         table_data, passed_all = self.grade_table_generator.create_grades_table(grades_data, subject_rankings)
+        
+        # Sanitize table data to ensure all cells are strings or Flowable objects
+        table_data = self._sanitize_table_data(table_data)
         
         # Determine if rank column should be displayed (if subject_rankings is empty or None, don't show ranks)
         display_rank = subject_rankings is not None and len(subject_rankings) > 0
@@ -346,6 +375,7 @@ class TranscriptPDFGenerator:
             available_width = A4[0] - doc.leftMargin - doc.rightMargin - 8
             grades_table, passed_all = self.table_generator.create_grades_table(
                 grades_data, available_width, subject_rankings)
+            
             story.append(grades_table)
             
             # Add note for failed courses if needed
@@ -353,7 +383,7 @@ class TranscriptPDFGenerator:
                 story.append(Spacer(1, 6))
                 note = "* <i>This course unit is not validated (ECTS credits not awarded). The academic year is validated by compensation, on the basis of the overall average grade.</i>"
                 story.append(Paragraph(note, self.style_manager.get_style('body')))
-                
+                    
         except Exception as e:
             print(f"Warning: Could not create grades table: {e}")
         

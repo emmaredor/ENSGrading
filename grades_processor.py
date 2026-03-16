@@ -14,6 +14,8 @@ Date: September 2025
 from typing import Dict, List, Tuple, Any
 import pandas as pd
 
+no_grades_placeholder = "N/A"
+
 
 class GradeConverter:
     """Handles conversion between different grading systems."""
@@ -34,7 +36,7 @@ class GradeConverter:
             12.0 -> ("B+", "3.33")
         """
         if grade_20 is None:
-            return "N/A", "N/A"
+            return no_grades_placeholder, no_grades_placeholder
         
         elif grade_20 >= 16:
             return "A+", "4.33"
@@ -175,6 +177,9 @@ class GradeTableGenerator:
         # Process each course
         for course_title, course_info in grades_data.items():
             grade = course_info[0]
+            if grade < 0:
+                # Means the course was not graded
+                grade = None
             
             # Support both formats: [grade, max_credits] and [grade, credits_obtained, max_credits]
             if len(course_info) == 2:
@@ -187,24 +192,26 @@ class GradeTableGenerator:
                 # Invalid format, skip this course
                 continue
             
-            credits_obtained = self.calculator.calculate_individual_credits(grade, max_credits)
-            
-            # Check if course was failed
-            if self.calculator.should_mark_course_unvalidated(grade):
-                passed_all = False
+            if grade is not None:
+                credits_obtained = self.calculator.calculate_individual_credits(grade, max_credits)
+                # Check if course was failed
+                if self.calculator.should_mark_course_unvalidated(grade):
+                    passed_all = False
+            else :
+                credits_obtained = max_credits
             
             # Format credits display
             credits_display = f"{credits_obtained}/{max_credits}"
-            if self.calculator.should_mark_course_unvalidated(grade):
+            if max_credits > 0 and credits_obtained == 0:
                 credits_display = f"{credits_display} *"
             
             # Convert to letter grade and GPA
-            letter_grade, gpa = self.converter.grade_to_letter_and_gpa(grade)
-            grade_display = str(grade) if grade is not None else "N/A"
+            letter_grade, gpa = (self.converter.grade_to_letter_and_gpa(grade) if grade is not None else (no_grades_placeholder, no_grades_placeholder))
+            grade_display = str(grade) if grade is not None else no_grades_placeholder
             
             # Accumulate statistics for GPA calculation
             if grade is not None and credits_obtained > 0:
-                if gpa != "N/A":
+                if gpa != no_grades_placeholder:
                     total_grade_points += float(gpa) * credits_obtained
                     actual_credits_earned += credits_obtained
             
@@ -261,7 +268,7 @@ class GradeTableGenerator:
             credits_for_totals, average_grade, cumulative_gpa, display_rank
         )
         table_data.append(summary_row)
-        
+
         return table_data, passed_all
     
     def _calculate_cumulative_gpa(self, grades_data: Dict[str, List[float]], 
@@ -284,7 +291,7 @@ class GradeTableGenerator:
                     
                 if grade is not None:
                     _, gpa = self.converter.grade_to_letter_and_gpa(grade)
-                    if gpa != "N/A":
+                    if gpa != no_grades_placeholder:
                         total_grade_points_compensation += float(gpa) * max_credits
             return total_grade_points_compensation / total_max_credits if total_max_credits > 0 else 0
         else:
@@ -304,7 +311,7 @@ class GradeTableGenerator:
                     
                 if grade is not None and credits_obtained > 0:
                     _, gpa = self.converter.grade_to_letter_and_gpa(grade)
-                    if gpa != "N/A":
+                    if gpa != no_grades_placeholder:
                         total_grade_points += float(gpa) * credits_obtained
             return total_grade_points / actual_credits_earned if actual_credits_earned > 0 else 0
     
@@ -439,9 +446,12 @@ class GradeValidator:
                 continue
             
             grade = course_info[0]
+            if  grade < 0 :
+                # Means the course was not graded
+                grade = None
             
             # Validate grade
-            if grade is not None and (not isinstance(grade, (int, float)) or grade < 0 or grade > 20):
+            if grade is not None and (not isinstance(grade, (int, float)) or grade > 20):
                 errors.append(f"Course '{course_name}': Invalid grade value {grade} (must be 0-20)")
             
             if len(course_info) == 2:
