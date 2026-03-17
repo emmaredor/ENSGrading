@@ -14,7 +14,7 @@ Date: September 2025
 from typing import Dict, List, Tuple, Any
 import pandas as pd
 
-no_grades_placeholder = "N/A"
+no_grades_placeholder = "yay"
 
 
 class GradeConverter:
@@ -220,6 +220,8 @@ class GradeTableGenerator:
                 total_grade_sum += grade
                 total_courses += 1
                 total_max_credits += max_credits
+            else:
+                total_no_grades_credits += credits_obtained
             
             # Get ranking for this course if available
             student_name = "" # This would typically come from the student data
@@ -255,7 +257,7 @@ class GradeTableGenerator:
         
         # Determine credits for TOTALS row (with compensation logic)
         credits_for_totals = self.calculator.calculate_compensation_credits(
-            average_grade, total_max_credits, actual_credits_earned
+            average_grade, total_max_credits, actual_credits_earned + total_no_grades_credits
         )
         
         # Calculate cumulative GPA
