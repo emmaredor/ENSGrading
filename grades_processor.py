@@ -258,8 +258,9 @@ class GradeTableGenerator:
         
         # Determine credits for TOTALS row (with compensation logic)
         credits_for_totals = self.calculator.calculate_compensation_credits(
-            average_grade, total_max_credits, actual_credits_earned + total_no_grades_credits
+            average_grade, total_max_credits, actual_credits_earned 
         )
+        credits_for_totals += total_no_grades_credits
         
         # Calculate cumulative GPA
         cumulative_gpa = self._calculate_cumulative_gpa(
