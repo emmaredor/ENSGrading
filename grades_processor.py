@@ -173,6 +173,7 @@ class GradeTableGenerator:
         total_grade_sum = 0
         total_courses = 0
         total_max_credits = 0
+        total_no_grades_credits = 0
         
         # Process each course
         for course_title, course_info in grades_data.items():
