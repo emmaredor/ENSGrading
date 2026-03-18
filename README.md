@@ -91,7 +91,7 @@ Packages requis :
 
 #### Avec fichiers séparés :
 ```bash
-python main.py --single --student-info ex/info_student.yaml --author-info ex/info_author.yaml --year-info ex/info_year.yaml --grades ex/grades.json -o output/transcript.pdf
+python main.py --single --student-info config/info_student.yaml --author-info config/info_author.yaml --year-info config/info_year.yaml --grades config/grades.json -o output/transcript.pdf
 ```
 
 #### Avec fichier combiné hérité :
