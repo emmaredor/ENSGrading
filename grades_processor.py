@@ -14,7 +14,7 @@ Date: September 2025
 from typing import Dict, List, Tuple, Any
 import pandas as pd
 
-no_grades_placeholder = "yay"
+no_grades_placeholder = "N/A"
 
 
 class GradeConverter:
